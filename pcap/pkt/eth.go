@@ -39,7 +39,7 @@ func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 
 // JsonElement returns a JSON encoding of the EthHdr struct.
 func (h *EthHdr) JsonElement() string {
-	return fmt.Sprintf("\"ether_header\":{\"ether_shost\":\"%s\",\"ether_dhost\":\"%s\",\"ether_type\":0x%x}",
+	return fmt.Sprintf("\"ether_header\":{\"ether_shost\":\"%s\",\"ether_dhost\":\"%s\",\"ether_type\":%d}",
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.EtherType)
@@ -47,7 +47,7 @@ func (h *EthHdr) JsonElement() string {
 
 // String returns a minimal encoding of the EthHdr struct.
 func (h *EthHdr) String() string {
-	return fmt.Sprintf("%s->%s 0x%x",
+	return fmt.Sprintf("%s->%s %#x",
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.EtherType)

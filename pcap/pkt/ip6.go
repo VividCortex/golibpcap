@@ -41,7 +41,7 @@ func NewIp6Hdr(p unsafe.Pointer) (*Ip6Hdr, unsafe.Pointer) {
 
 // JsonElement returns a JSON encoding of the Ip6Hdr struct.
 func (h *Ip6Hdr) JsonElement() string {
-	return fmt.Sprintf("\"ip6hdr\":{\"ip6_src\":\"%s\",\"ip6_dst\":\"%s\",\"next_header\":%#x}",
+	return fmt.Sprintf("\"ip6hdr\":{\"ip6_src\":\"%s\",\"ip6_dst\":\"%s\",\"next_header\":%d}",
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.NextHeader)

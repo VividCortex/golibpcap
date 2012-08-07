@@ -55,7 +55,7 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 
 // JsonElement returns a JSON encoding of the TcpHdr struct.
 func (h *TcpHdr) JsonElement() string {
-	return fmt.Sprintf("\"tcphdr\":{\"source\":%d,\"dest\":%d,\"seq\":%d,\"ack_seq\":%d,\"flags\":0x%x}",
+	return fmt.Sprintf("\"tcphdr\":{\"source\":%d,\"dest\":%d,\"seq\":%d,\"ack_seq\":%d,\"flags\":%d}",
 		h.Source,
 		h.Dest,
 		h.Seq,
@@ -65,7 +65,7 @@ func (h *TcpHdr) JsonElement() string {
 
 // String returns a minimal encoding of the TcpHdr struct.
 func (h *TcpHdr) String() string {
-	return fmt.Sprintf("%d->%d %d %d 0x%x",
+	return fmt.Sprintf("%d->%d %d %d %#x",
 		h.Source,
 		h.Dest,
 		h.Seq,

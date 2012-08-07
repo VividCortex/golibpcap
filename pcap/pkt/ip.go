@@ -50,7 +50,7 @@ func NewIpHdr(p unsafe.Pointer) (*IpHdr, unsafe.Pointer) {
 
 // JsonElement returns a JSON encoding of the IpHdr struct.
 func (h *IpHdr) JsonElement() string {
-	return fmt.Sprintf("\"iphdr\":{\"saddr\":\"%s\",\"daddr\":\"%s\",\"protocol\":%#x}",
+	return fmt.Sprintf("\"iphdr\":{\"saddr\":\"%s\",\"daddr\":\"%s\",\"protocol\":%d}",
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.Protocol)
