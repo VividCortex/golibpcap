@@ -16,19 +16,20 @@ package pcap
 */
 import "C"
 import (
-	"./pkt"
 	"errors"
 	"fmt"
 	"net"
 	"time"
 	"unsafe"
+
+	"code.google.com/p/golibpcap/pcap/pkt"
 )
 
 var (
-	ChanBuffSize    = 5000 // How many packets can we buffer in our channel.
-	OptimizeFilters = 1    // Tells the bpf compiler to optimize filters.
+	ChanBuffSize    = 5000         // How many packets can we buffer in our channel.
+	OptimizeFilters = 1            // Tells the bpf compiler to optimize filters.
 	DefaultSnaplen  = int32(65535) // number of bytes to capture per packet.
-	DefaultPromisc  = int32(1) // 0->false, 1->true
+	DefaultPromisc  = int32(1)     // 0->false, 1->true
 )
 
 // Represents the elements that go into a very common bpf filter.
@@ -59,7 +60,7 @@ type Pcap struct {
 	Promisc  int32            // 0->false, 1->true
 	Timeout  int32            // ms
 	cptr     *C.pcap_t        // C Pointer to pcap_t
-	pktCnt	uint32            // the number of packets captured
+	pktCnt   uint32           // the number of packets captured
 	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
 }
 

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	"../pcap"
+	"code.google.com/p/golibpcap/pcap"
 )
 
 var (

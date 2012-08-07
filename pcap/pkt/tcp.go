@@ -11,8 +11,8 @@ package pkt
 import "C"
 import (
 	"fmt"
-	"unsafe"
 	"reflect"
+	"unsafe"
 )
 
 // The TcpHdr struct is a wrapper for the tcphdr struct in <netinet/tcp.h>.

@@ -17,15 +17,15 @@ import (
 
 // The IpHdr struct is a wrapper for the iphdr struct in <netinet/ip.h>.
 type IpHdr struct {
-	cptr     *C.struct_iphdr
-	Ihl      uint8 // header length (32bit words)
-	Version  uint8 // version
-	SrcAddr  net.IP // source address
-	DstAddr  net.IP // dest address
-	Protocol uint8 // protocol
-	TotLen   uint16 // total length (bytes)
+	cptr       *C.struct_iphdr
+	Ihl        uint8  // header length (32bit words)
+	Version    uint8  // version
+	SrcAddr    net.IP // source address
+	DstAddr    net.IP // dest address
+	Protocol   uint8  // protocol
+	TotLen     uint16 // total length (bytes)
 	PayloadLen uint16 // payload length (bytes)
-	payload  unsafe.Pointer
+	payload    unsafe.Pointer
 }
 
 // With an unsafe.Pointer to the block of C memory NewIpHdr returns a filled in IpHdr struct.
