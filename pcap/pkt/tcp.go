@@ -63,6 +63,17 @@ func (h *TcpHdr) JsonElement() string {
 		h.Flags)
 }
 
+// CsvElement returns a CSV encoding of the TcpHdr struct.
+// The string "TCP" signifies the beginning of the TcpHdr.
+func (h *TcpHdr) CsvElement() string {
+	return fmt.Sprintf("\"TCP\",%d,%d,%d,%d,%d",
+		h.Source,
+		h.Dest,
+		h.Seq,
+		h.AckSeq,
+		h.Flags)
+}
+
 // String returns a minimal encoding of the TcpHdr struct.
 func (h *TcpHdr) String() string {
 	return fmt.Sprintf("%d->%d %d %d %#x",

@@ -47,6 +47,15 @@ func (h *Ip6Hdr) JsonElement() string {
 		h.NextHeader)
 }
 
+// CsvElement returns a CSV encoding of the Ip6Hdr struct.
+// The string "IP6" signifies the beginning of the Ip6Hdr.
+func (h *Ip6Hdr) CsvElement() string {
+	return fmt.Sprintf("\"IP6\",\"%s\",\"%s\",%d",
+		h.SrcAddr.String(),
+		h.DstAddr.String(),
+		h.NextHeader)
+}
+
 // String returns a minimal encoding of the Ip6Hdr struct.
 func (h *Ip6Hdr) String() string {
 	return fmt.Sprintf("%s->%s %#x",

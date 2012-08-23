@@ -34,11 +34,28 @@ type Packet struct {
 // The Hdr interface allows us to deal with an array of headers.
 type Hdr interface {
 	JsonElement() string
+	CsvElement() string
 	String() string
 }
 
+// NewPacket returns a parsed and decoded Packet.
+// pkthdr_ptr should be a *C.struct_pcap_pkthdr
+// buf_ptr should be a *C.u_char
+func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
+	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
+
+	p := &Packet{
+		Time:   time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)),
+		Caplen: uint32(pkthdr.caplen),
+		Len:    uint32(pkthdr.len),
+		Buf:    buf_ptr,
+	}
+	p.decode()
+	return p
+}
+
 // Decode decodes the headers of a Packet.
-func (p *Packet) Decode() {
+func (p *Packet) decode() {
 
 	ethHdr, buf := NewEthHdr(p.Buf)
 	p.Headers = append(p.Headers, ethHdr)
@@ -104,6 +121,17 @@ func (p *Packet) JsonString() string {
 		s[i] = p.Headers[i].JsonElement()
 	}
 	return fmt.Sprintf("{\"time\":%d,%s}", p.Time.UnixNano(), strings.Join(s, ","))
+}
+
+// CsvString  returns a CSV encoding of the Packet struct.
+// Each header type has a unique string that marks the beginning of the CSV
+// fields for that particular header.
+func (p *Packet) CsvString() string {
+	s := make([]string, len(p.Headers))
+	for i := range p.Headers {
+		s[i] = p.Headers[i].CsvElement()
+	}
+	return fmt.Sprintf("%d,%s", p.Time.UnixNano(), strings.Join(s, ","))
 }
 
 // String returns a minimal encoding of the Packet struct.

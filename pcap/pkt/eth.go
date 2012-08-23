@@ -45,6 +45,15 @@ func (h *EthHdr) JsonElement() string {
 		h.EtherType)
 }
 
+// CsvElement returns a CSV encoding of the EthHdr struct.
+// The string "ETH" signifies the beginning of the EthHdr.
+func (h *EthHdr) CsvElement() string {
+	return fmt.Sprintf("\"ETH\",\"%s\",\"%s\",%d",
+		h.SrcAddr.String(),
+		h.DstAddr.String(),
+		h.EtherType)
+}
+
 // String returns a minimal encoding of the EthHdr struct.
 func (h *EthHdr) String() string {
 	return fmt.Sprintf("%s->%s %#x",

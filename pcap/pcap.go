@@ -173,17 +173,9 @@ func (p *Pcap) OpenFile() error {
 
 //export goCallBack
 func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
-	pkthdr := *pkthdr_ptr
-
-	pkt := &pkt.Packet{
-		Time:   time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)),
-		Caplen: uint32(pkthdr.caplen),
-		Len:    uint32(pkthdr.len),
-		Buf:    unsafe.Pointer(buf_ptr),
-	}
-
+	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
 	p := (*Pcap)(unsafe.Pointer(user))
-	p.Pchan <- pkt
+	p.Pchan <- packet
 	p.pktCnt++
 }
 
@@ -196,11 +188,11 @@ func (p *Pcap) Loop(cnt int) {
 func (p *Pcap) Listen(r chan *[]*pkt.Packet) {
 	var b []*pkt.Packet
 	for {
-		pkt := <-p.Pchan
-		if pkt == nil {
+		packet := <-p.Pchan
+		if packet == nil {
 			break
 		}
-		b = append(b, pkt)
+		b = append(b, packet)
 	}
 	r <- &b
 }
@@ -234,17 +226,9 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 	var buf_ptr *C.u_char
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
 
-	var pkthdr C.struct_pcap_pkthdr
-	pkthdr = *pkthdr_ptr
-
-	pkt := &pkt.Packet{
-		Time:   time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)),
-		Caplen: uint32(pkthdr.caplen),
-		Len:    uint32(pkthdr.len),
-		Buf:    unsafe.Pointer(buf_ptr),
-	}
+	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
 	p.pktCnt++
-	return pkt, res
+	return packet, res
 }
 
 // Getstats returns a filled in Stat struct.
