@@ -89,7 +89,6 @@ func main() {
 		if pkt == nil {
 			break
 		}
-		pkt.Decode()
 		fmt.Println(pkt.String())
 	}
 	s, err := h.Getstats()
