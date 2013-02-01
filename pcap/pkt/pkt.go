@@ -93,7 +93,9 @@ func (p *Packet) decode() {
 		p.Headers = append(p.Headers, tcpHead)
 		pl = tcpHead.GetPayloadBytes(payloadLength)
 	case C.IPPROTO_UDP:
-		//TODO(gavaletz) UDP
+		var udpHead *UdpHdr
+		udpHead, buf = NewUdpHdr(buf)
+		p.Headers = append(p.Headers, udpHead)
 		return
 	case C.IPPROTO_ICMP:
 		//TODO(gavaletz) ICMP

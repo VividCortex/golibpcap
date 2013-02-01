@@ -25,6 +25,7 @@ var (
 	device   *string = flag.String("i", "eth0", "interface")
 	expr     *string = flag.String("e", "", "filter expression")
 	dumpFile *string = flag.String("r", "", "pcap savefile to read")
+	verbose  *bool   = flag.Bool("v", false, "use verbose outupt")
 	pCount   *int    = flag.Int("c", 0, "packet count")
 	snaplen  *int    = flag.Int("s", 65535, "snaplen")
 	tLimit   *int    = flag.Int("t", 0, "time limit")
@@ -84,15 +85,29 @@ func main() {
 	}
 
 	// Start decoding packets until we receive the signal to stop (nil pkt).
-	for {
-		pkt := <-h.Pchan
-		if pkt == nil {
-			break
+	if *verbose {
+		for {
+			pkt := <-h.Pchan
+			if pkt == nil {
+				break
+			}
+			fmt.Println(pkt.JsonString())
 		}
-		fmt.Println(pkt.String())
-	}
-	s, err := h.Getstats()
-	if err == nil {
-		fmt.Printf("%s\n", s)
+		s, err := h.Getstats()
+		if err == nil {
+			fmt.Printf("%s\n", s)
+		}
+	} else {
+		for {
+			pkt := <-h.Pchan
+			if pkt == nil {
+				break
+			}
+			fmt.Println(pkt.String())
+		}
+		s, err := h.Getstats()
+		if err == nil {
+			fmt.Printf("%s\n", s)
+		}
 	}
 }
