@@ -28,12 +28,21 @@ type EthHdr struct {
 // With an unsafe.Pointer to the block of C memory NewEthHdr returns a filled in EthHdr struct.
 func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 	ethHdr := &EthHdr{
-		cptr:    (*C.struct_ether_header)(p),
-		payload: unsafe.Pointer(uintptr(p) + uintptr(C.ETHER_HDR_LEN)),
+		cptr: (*C.struct_ether_header)(p),
 	}
 	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETH_ALEN))
 	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETH_ALEN))
 	ethHdr.EtherType = uint16(C.ntohs(C.uint16_t(ethHdr.cptr.ether_type)))
+
+	// When using the Linux "any" device we have to handle cooked headers.
+	// To determine if you could be in this case you can use pcap_datalink()
+	// and check for DLT_LINUX_SLL.
+	if ethHdr.EtherType == 0 {
+		// The "cooked" headers have an extra two bytes.
+		ethHdr.payload = unsafe.Pointer(uintptr(p) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
+	} else {
+		ethHdr.payload = unsafe.Pointer(uintptr(p) + uintptr(C.ETHER_HDR_LEN))
+	}
 	return ethHdr, ethHdr.payload
 }
 

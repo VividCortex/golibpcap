@@ -67,7 +67,7 @@ func (p *Packet) decode() {
 	)
 
 	switch ethHdr.EtherType {
-	case C.ETHERTYPE_IP:
+	case C.ETHERTYPE_IP, 0:
 		var ipHead *IpHdr
 		ipHead, buf = NewIpHdr(buf)
 		proto = ipHead.Protocol

@@ -225,10 +225,12 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 	var pkthdr_ptr *C.struct_pcap_pkthdr
 	var buf_ptr *C.u_char
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
-
-	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
-	p.pktCnt++
-	return packet, res
+	if res == 1 {
+		packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+		p.pktCnt++
+		return packet, res
+	}
+	return nil, res
 }
 
 // Getstats returns a filled in Stat struct.
