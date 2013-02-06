@@ -37,6 +37,9 @@ func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 	// When using the Linux "any" device we have to handle cooked headers.
 	// To determine if you could be in this case you can use pcap_datalink()
 	// and check for DLT_LINUX_SLL.
+	//TODO(gavaletz) This is an example of a decision that could be made once
+	//   outside the process of decoding packets as if one is like this they
+	//   will all be like this.
 	if ethHdr.EtherType == 0 {
 		// The "cooked" headers have an extra two bytes.
 		ethHdr.payload = unsafe.Pointer(uintptr(p) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))

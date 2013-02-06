@@ -22,13 +22,14 @@ import (
 )
 
 var (
-	device   *string = flag.String("i", "eth0", "interface")
-	expr     *string = flag.String("e", "", "filter expression")
-	dumpFile *string = flag.String("r", "", "pcap savefile to read")
-	verbose  *bool   = flag.Bool("v", false, "use verbose outupt")
-	pCount   *int    = flag.Int("c", 0, "packet count")
-	snaplen  *int    = flag.Int("s", 65535, "snaplen")
-	tLimit   *int    = flag.Int("t", 0, "time limit")
+	buffLimit *int    = flag.Int("b", 0, "buffer limit (>=102400)")
+	device    *string = flag.String("i", "", "interface")
+	dumpFile  *string = flag.String("r", "", "pcap savefile to read")
+	expr      *string = flag.String("e", "", "filter expression")
+	pCount    *int    = flag.Int("c", 0, "packet count")
+	snaplen   *int    = flag.Int("s", 65535, "snaplen")
+	tLimit    *int    = flag.Int("t", 0, "time limit")
+	verbose   *bool   = flag.Bool("v", false, "use verbose outupt")
 )
 
 func main() {
@@ -52,6 +53,37 @@ func main() {
 			flag.Usage()
 			log.Fatal("main: *device == \"\"")
 		}
+		if *buffLimit != 0 {
+			// If we have a custom buffer limit then we have to set things up
+			// by hand.  Most of these settings have to be set before and cannot
+			// be changed once the pcap is active.
+			h, err = pcap.Create(*device)
+			if err != nil {
+				log.Fatalf("main:pcap.Create: %v", err)
+			}
+			err = h.SetSnaplen(int32(*snaplen))
+			if err != nil {
+				log.Fatalf("main:h.SetSnaplen: %v", err)
+			}
+			err = h.SetBufferSize(int32(*buffLimit))
+			if err != nil {
+				log.Fatalf("main:h.SetBufferSize: %v", err)
+			}
+			err = h.SetPromisc(true)
+			if err != nil {
+				log.Fatalf("main:h.SetPromisc: %v", err)
+			}
+			err = h.SetTimeout(int32(0))
+			if err != nil {
+				log.Fatalf("main:h.SetTimeout: %v", err)
+			}
+			err = h.Activate()
+			if err != nil {
+				log.Fatalf("main:h.Activate: %v", err)
+			}
+		}
+	}
+	if h == nil {
 		// Given a device we will open a live trace of that device.
 		h, err = pcap.OpenLive(*device, int32(*snaplen), true, 0)
 		if err != nil {

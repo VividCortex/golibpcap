@@ -52,18 +52,6 @@ func (f *Filter) String() string {
 		f.DstPort)
 }
 
-// Pcap is the wrapper for the pcap_t struct in <pcap.h>.
-type Pcap struct {
-	FileName string           // Used for pcap_open_offline
-	Device   string           // Used for pcap_open_live
-	Snaplen  int32            // Specifies the maximum number of bytes to capture
-	Promisc  int32            // 0->false, 1->true
-	Timeout  int32            // ms
-	cptr     *C.pcap_t        // C Pointer to pcap_t
-	pktCnt   uint32           // the number of packets captured
-	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
-}
-
 // Stat is the wrapper for the pcap_stat struct in <pcap.h>.
 type Stat struct {
 	Captured  uint32 // The number of packets captured.
@@ -90,58 +78,35 @@ func (s *Stat) String() string {
 		s.IfDropped)
 }
 
+//export goCallBack
+func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
+	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+	p := (*Pcap)(unsafe.Pointer(user))
+	p.Pchan <- packet
+	p.pktCnt++
+}
+
 // LibVersion returns information about the version of libpcap being used.
 // Note that it contains more information than just a version number.
 func LibVersion() string {
 	return C.GoString(C.pcap_lib_version())
 }
 
-// Datalink returns the link layer type.
-// For a list of possible DLT values see <pcap/bpf.h>.
-func (p *Pcap) Datalink() int {
-	return int(C.pcap_datalink(p.cptr))
+// Statustostr returns error strings for PCAP_ERROR_ and PCAP_WARNING_ values.
+func Statustostr(errnum int32) string {
+	return C.GoString(C.pcap_statustostr(C.int(errnum)))
 }
 
-// GetErr returns an error based on the error text returned by pcap_geterr().
-func (p *Pcap) GetErr() error {
-	return errors.New(C.GoString(C.pcap_geterr(p.cptr)))
-}
-
-// Close closes a off-line pcap savefile.
-func (p *Pcap) Close() {
-	if p.FileName != "" {
-		C.pcap_close(p.cptr)
-	}
-}
-
-// OpenLive returns a *Pcap and opens it to listen to live network traffic.
-func OpenLive(device string, snaplen int32, promisc bool, timeout_ms int32) (*Pcap, error) {
-	p := &Pcap{
-		Device:  device,
-		Snaplen: snaplen,
-		Timeout: timeout_ms,
-		Pchan:   make(chan *pkt.Packet, ChanBuffSize),
-	}
-	if promisc {
-		p.Promisc = 1
-	}
-	return p, p.Open()
-}
-
-// Open creates a packet capture descriptor to look at packets on the network.
-func (p *Pcap) Open() error {
-	buf := (*C.char)(C.calloc(C.PCAP_ERRBUF_SIZE, 1))
-	defer C.free(unsafe.Pointer(buf))
-
-	dev := C.CString(p.Device)
-	defer C.free(unsafe.Pointer(dev))
-
-	p.cptr = C.pcap_open_live(dev, C.int(p.Snaplen), C.int(p.Promisc),
-		C.int(p.Timeout), buf)
-	if p.cptr == nil {
-		return errors.New(C.GoString(buf))
-	}
-	return nil
+// Pcap is the wrapper for the pcap_t struct in <pcap.h>.
+type Pcap struct {
+	FileName string           // Used for pcap_open_offline
+	Device   string           // Used for pcap_open_live
+	Snaplen  int32            // Specifies the maximum number of bytes to capture
+	Promisc  int32            // 0->false, 1->true
+	Timeout  int32            // ms
+	cptr     *C.pcap_t        // C Pointer to pcap_t
+	pktCnt   uint32           // the number of packets captured
+	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
 }
 
 // OpenOffline returns a *Pcap and opens it to read pcap packets from a savefile.
@@ -171,12 +136,143 @@ func (p *Pcap) OpenFile() error {
 	return nil
 }
 
-//export goCallBack
-func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
-	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
-	p := (*Pcap)(unsafe.Pointer(user))
-	p.Pchan <- packet
-	p.pktCnt++
+// Create will construct a pcap that can be used to set custom settings like a
+// larger buffer.  The resulting Pcap must then be started with a call to
+// Activate.  See Open for an example list of calls that should be made.
+func Create(device string) (*Pcap, error) {
+	p := &Pcap{
+		Device: device,
+		Pchan:  make(chan *pkt.Packet, ChanBuffSize),
+	}
+
+	buf := (*C.char)(C.calloc(C.PCAP_ERRBUF_SIZE, 1))
+	defer C.free(unsafe.Pointer(buf))
+
+	dev := C.CString(p.Device)
+	defer C.free(unsafe.Pointer(dev))
+
+	p.cptr = C.pcap_create(dev, buf)
+	if p.cptr == nil {
+		return p, errors.New(C.GoString(buf))
+	}
+	return p, nil
+}
+
+// OpenLive returns a *Pcap and opens it to listen to live network traffic.
+func OpenLive(device string, snaplen int32, promisc bool, timeout_ms int32) (*Pcap, error) {
+	p := &Pcap{
+		Device:  device,
+		Snaplen: snaplen,
+		Timeout: timeout_ms,
+		Pchan:   make(chan *pkt.Packet, ChanBuffSize),
+	}
+	if promisc {
+		p.Promisc = 1
+	}
+	return p, p.Open()
+}
+
+// Open creates a packet capture descriptor to look at packets on the network.
+// Calling  C.pcap_open_live is the equivalent of calling:
+//	C.pcap_create
+//	C.pcap_set_snaplen
+//	C.pcap_set_promisc
+//	C.pcap_set_timeout
+//	C.pcap_activate
+//
+// In that order.  So if you want to use custom values for any thing that has
+// to be set before pcap is active you should use Create instead of Open or
+// OpenLive.
+func (p *Pcap) Open() error {
+	buf := (*C.char)(C.calloc(C.PCAP_ERRBUF_SIZE, 1))
+	defer C.free(unsafe.Pointer(buf))
+
+	dev := C.CString(p.Device)
+	defer C.free(unsafe.Pointer(dev))
+
+	p.cptr = C.pcap_open_live(dev, C.int(p.Snaplen), C.int(p.Promisc),
+		C.int(p.Timeout), buf)
+	if p.cptr == nil {
+		return errors.New(C.GoString(buf))
+	}
+	return nil
+}
+
+// Close closes a off-line pcap savefile.
+func (p *Pcap) Close() {
+	if p.FileName != "" {
+		C.pcap_close(p.cptr)
+	}
+}
+
+// Datalink returns the link layer type.
+// For a list of possible DLT values see <pcap/bpf.h>.
+func (p *Pcap) Datalink() int32 {
+	return int32(C.pcap_datalink(p.cptr))
+}
+
+// GetErr returns an error based on the error text returned by pcap_geterr().
+func (p *Pcap) GetErr() error {
+	return errors.New(C.GoString(C.pcap_geterr(p.cptr)))
+}
+
+// SetSnaplen should only be called on a Pcap that was obtained through Create.
+func (p *Pcap) SetSnaplen(snaplen int32) error {
+	res := int32(C.pcap_set_snaplen(p.cptr, C.int(snaplen)))
+	if res < 0 {
+		return fmt.Errorf("%s(errnum=%d)", Statustostr(res), res)
+	}
+	p.Snaplen = snaplen
+	return nil
+}
+
+// SetPromisc should only be called on a Pcap that was obtained through Create.
+func (p *Pcap) SetPromisc(promisc bool) error {
+	pro := int32(0)
+	if promisc {
+		pro = int32(1)
+	}
+	res := int32(C.pcap_set_promisc(p.cptr, C.int(pro)))
+	if res < 0 {
+		return fmt.Errorf("%s(errnum=%d)", Statustostr(res), res)
+	}
+	p.Promisc = pro
+	return nil
+}
+
+// SetTimeout should only be called on a Pcap that was obtained through Create.
+func (p *Pcap) SetTimeout(timeout_ms int32) error {
+	res := int32(C.pcap_set_timeout(p.cptr, C.int(timeout_ms)))
+	if res < 0 {
+		return fmt.Errorf("%s(errnum=%d)", Statustostr(res), res)
+	}
+	p.Timeout = timeout_ms
+	return nil
+}
+
+// SetBufferSize should only be called on a Pcap that was obtained through
+// Create.  If the buffer size is too small then Activate will fail with a
+// generic PCAP_ERROR.
+func (p *Pcap) SetBufferSize(bufferSize int32) error {
+	// If you try to set a negative buffer size
+	// you are going to have a bad time.
+	if bufferSize < 0 {
+		return fmt.Errorf("negative buffer size")
+	}
+	res := int32(C.pcap_set_buffer_size(p.cptr, C.int(bufferSize)))
+	if res < 0 {
+		return fmt.Errorf("%s(errnum=%d)", Statustostr(res), res)
+	}
+	return nil
+}
+
+// Activate should only be called on a Pcap that was obtained through Create.
+func (p *Pcap) Activate() error {
+	res := int32(C.pcap_activate(p.cptr))
+	if res < 0 {
+		return fmt.Errorf("%s(errnum=%d)", Statustostr(res), res)
+	}
+	return nil
 }
 
 // Loop keeps reading packets until cnt packets are processed or an error occurs.
@@ -185,6 +281,7 @@ func (p *Pcap) Loop(cnt int) {
 	p.Pchan <- nil
 }
 
+// Listen will accumulate packets until it is stopped by a nil packet pointer.
 func (p *Pcap) Listen(r chan *[]*pkt.Packet) {
 	var b []*pkt.Packet
 	for {
