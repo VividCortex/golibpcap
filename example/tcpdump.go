@@ -27,6 +27,7 @@ var (
 	dumpFile  *string = flag.String("r", "", "pcap savefile to read")
 	expr      *string = flag.String("e", "", "filter expression")
 	pCount    *int    = flag.Int("c", 0, "packet count")
+	quiet     *bool   = flag.Bool("q", false, "use quiet outupt (stats only)")
 	snaplen   *int    = flag.Int("s", 65535, "snaplen")
 	tLimit    *int    = flag.Int("t", 0, "time limit")
 	verbose   *bool   = flag.Bool("v", false, "use verbose outupt")
@@ -125,9 +126,12 @@ func main() {
 			}
 			fmt.Println(pkt.JsonString())
 		}
-		s, err := h.Getstats()
-		if err == nil {
-			fmt.Printf("%s\n", s)
+	} else if *quiet {
+		for {
+			pkt := <-h.Pchan
+			if pkt == nil {
+				break
+			}
 		}
 	} else {
 		for {
@@ -137,9 +141,9 @@ func main() {
 			}
 			fmt.Println(pkt.String())
 		}
-		s, err := h.Getstats()
-		if err == nil {
-			fmt.Printf("%s\n", s)
-		}
+	}
+	s, err := h.Getstats()
+	if err == nil {
+		fmt.Printf("%s\n", s)
 	}
 }

@@ -23,12 +23,11 @@ import (
 
 // The Packet struct is a wrapper for the pcap_pkthdr struct in <pcap.h>.
 type Packet struct {
-	PcapHdr *C.struct_pcap_pkthdr // see <pcap.h> struct pcap_pkthdr
-	Time    time.Time             // time stamp from the nic
-	Caplen  uint32                // length of portion present
-	Len     uint32                // length this packet (off wire)
-	Headers []Hdr                 // Go wrappers for C pkt headers
-	Buf     unsafe.Pointer        // packet data (*C.u_char)
+	Time    time.Time      // time stamp from the nic
+	Caplen  uint32         // length of portion present
+	Len     uint32         // length this packet (off wire)
+	Headers []Hdr          // Go wrappers for C pkt headers
+	buf     unsafe.Pointer // packet data (*C.u_char)
 }
 
 // The Hdr interface allows us to deal with an array of headers.
@@ -48,7 +47,7 @@ func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
 		Time:   time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)),
 		Caplen: uint32(pkthdr.caplen),
 		Len:    uint32(pkthdr.len),
-		Buf:    buf_ptr,
+		buf:    buf_ptr,
 	}
 	p.decode()
 	return p
@@ -57,7 +56,7 @@ func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
 // Decode decodes the headers of a Packet.
 func (p *Packet) decode() {
 
-	ethHdr, buf := NewEthHdr(p.Buf)
+	ethHdr, buf := NewEthHdr(p.buf)
 	p.Headers = append(p.Headers, ethHdr)
 
 	var (
