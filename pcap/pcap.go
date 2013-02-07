@@ -18,11 +18,12 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"net"
 	"time"
 	"unsafe"
 
 	"code.google.com/p/golibpcap/pcap/pkt"
+	"code.google.com/p/golibpcap/pcap/stat"
+	"code.google.com/p/golibpcap/trace"
 )
 
 var (
@@ -31,52 +32,6 @@ var (
 	DefaultSnaplen  = int32(65535) // number of bytes to capture per packet.
 	DefaultPromisc  = int32(1)     // 0->false, 1->true
 )
-
-// Represents the elements that go into a very common bpf filter.
-//
-// Most users can give the same filter strings that they would give to tcpdump
-// directly to the Setfilter function.
-type Filter struct {
-	SrcIP   net.IP // The source IP address
-	SrcPort int    // The source port number
-	DstIp   net.IP // The destination IP address
-	DstPort int    // The destination port number
-}
-
-// Given a complete Filter it generates the string form for Setfilter.
-func (f *Filter) String() string {
-	return fmt.Sprintf("ip src %s and src port %d and dst %s and dst port %d",
-		f.SrcIP.String(),
-		f.SrcPort,
-		f.DstIp.String(),
-		f.DstPort)
-}
-
-// Stat is the wrapper for the pcap_stat struct in <pcap.h>.
-type Stat struct {
-	Captured  uint32 // The number of packets captured.
-	Received  uint32 // The number of packets received (pre-filter).
-	Dropped   uint32 // The number of packets dropped.
-	IfDropped uint32 // The number of drops by the interface.
-}
-
-// JsonElement returns and JSON encoded form of the Stat struct.
-func (s *Stat) JsonString() string {
-	return fmt.Sprintf("\"stat\":{\"captured\":%d,\"received\":%d,\"dropped\":%d,\"ifDropped\":%d}",
-		s.Captured,
-		s.Received,
-		s.Dropped,
-		s.IfDropped)
-}
-
-// Provides a human readable output for the Stat struct.
-func (s *Stat) String() string {
-	return fmt.Sprintf("Captured: %d\nReceived: %d\nDropped: %d\nIfDropped: %d",
-		s.Captured,
-		s.Received,
-		s.Dropped,
-		s.IfDropped)
-}
 
 //export goCallBack
 func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
@@ -332,14 +287,14 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 }
 
 // Getstats returns a filled in Stat struct.
-func (p *Pcap) Getstats() (*Stat, error) {
+func (p *Pcap) Getstats() (*stat.Stat, error) {
 	var cs C.struct_pcap_stat
 	res := C.pcap_stats(p.cptr, &cs)
 	if res == C.PCAP_ERROR {
 		return nil, p.GetErr()
 	}
 
-	s := &Stat{
+	s := &stat.Stat{
 		Captured:  p.pktCnt,
 		Received:  uint32(cs.ps_recv),
 		Dropped:   uint32(cs.ps_drop),
@@ -371,4 +326,26 @@ func (p *Pcap) Setfilter(expr string) error {
 
 	C.pcap_freecode(&bpf)
 	return nil
+}
+
+// NewPktTrace is a beta function and should be treated as such.
+func (p *Pcap) NewPktTrace(data *[]*pkt.Packet) (*trace.PktTrace, error) {
+	t := &trace.PktTrace{
+		Version: trace.Version,
+		Date:    time.Now(),
+		MetaPcap: &trace.MetaPcap{
+			Device:  p.Device,
+			Snaplen: p.Snaplen,
+			Promisc: p.Promisc,
+			Timeout: p.Timeout,
+			Filters: make([]string, len(p.Filters)),
+		},
+		Data: data,
+	}
+	for i := range p.Filters {
+		t.MetaPcap.Filters[i] = p.Filters[i]
+	}
+	var err error
+	t.Stats, err = p.Getstats()
+	return t, err
 }
