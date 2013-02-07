@@ -104,6 +104,7 @@ type Pcap struct {
 	Snaplen  int32            // Specifies the maximum number of bytes to capture
 	Promisc  int32            // 0->false, 1->true
 	Timeout  int32            // ms
+	Filters  []string         // track filters applied to the capture
 	cptr     *C.pcap_t        // C Pointer to pcap_t
 	pktCnt   uint32           // the number of packets captured
 	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
@@ -365,6 +366,8 @@ func (p *Pcap) Setfilter(expr string) error {
 		C.pcap_freecode(&bpf)
 		return p.GetErr()
 	}
+
+	p.Filters = append(p.Filters, expr)
 
 	C.pcap_freecode(&bpf)
 	return nil
