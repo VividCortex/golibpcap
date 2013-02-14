@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style                              
 // license that can be found in the LICENSE file.
 
+// +build !safe,!appengine
+
 // The pcap package provides support for using the C pcap library from within a
 // Go program.  Not all of the functions exported by <pacp.h> have been included
 // in this package and more will be added on request.
@@ -65,7 +67,7 @@ type Pcap struct {
 	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
 }
 
-// OpenOffline returns a *Pcap and opens it to read pcap packets from a savefile.
+// OpenOffline returns a *Pcap and opens it to read pcap packets from a save file.
 func OpenOffline(file string) (*Pcap, error) {
 	p := &Pcap{
 		FileName: file,

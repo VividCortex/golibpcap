@@ -1,5 +1,5 @@
-// Copyright 2013 The golibpcap Authors. All rights reserved.                        
-// Use of this source code is governed by a BSD-style                              
+// Copyright 2013 The golibpcap Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // The trace package provides support for analyzing and storing the data
@@ -8,6 +8,7 @@
 package trace
 
 import (
+	"encoding/gob"
 	"time"
 
 	"code.google.com/p/golibpcap/pcap/pkt"
@@ -17,6 +18,16 @@ import (
 const (
 	Version = "beta-0-0-0"
 )
+
+func init() {
+	gob.Register(&pkt.EthHdr{})
+	gob.Register(&pkt.HttpHdr{})
+	gob.Register(&pkt.Ip6Hdr{})
+	gob.Register(&pkt.IpHdr{})
+	gob.Register(&pkt.Packet{})
+	gob.Register(&pkt.TcpHdr{})
+	gob.Register(&pkt.UdpHdr{})
+}
 
 // A PktTrace combines the pkt.Packet data with meta data so that it can be
 // archived and analyzed.
