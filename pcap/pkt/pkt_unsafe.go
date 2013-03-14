@@ -47,33 +47,14 @@ func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
 
 // Decode decodes the headers of a Packet.
 func (p *Packet) decode() {
-
 	ethHdr, buf := NewEthHdr(p.buf)
 	p.Headers[LinkLayer] = ethHdr
 
-	//TODO(gavaletz) Create IpHdr interface that has proto & payloadLength
-	//	This may allow us to use p.Headers[NetworkLayer] and reduce the
-	//	number of GC calls since this is usually called within a loop.
-
-	var (
-		proto         uint8  // the transport layer protocol
-		payloadLength uint16 // the length (bytes) of the IP payload
-		pl            []byte // the transport layer payload
-	)
-
 	switch ethHdr.EtherType {
 	case C.ETHERTYPE_IP, 0:
-		var ipHead *IpHdr
-		ipHead, buf = NewIpHdr(buf)
-		proto = ipHead.Protocol
-		payloadLength = ipHead.PayloadLen
-		p.Headers[NetworkLayer] = ipHead
+		p.Headers[NetworkLayer], buf = NewIpHdr(buf)
 	case C.ETHERTYPE_IPV6:
-		var ipHead *Ip6Hdr
-		ipHead, buf = NewIp6Hdr(buf)
-		proto = ipHead.NextHeader
-		payloadLength = ipHead.PayloadLen
-		p.Headers[NetworkLayer] = ipHead
+		p.Headers[NetworkLayer], buf = NewIp6Hdr(buf)
 	case C.ETHERTYPE_ARP:
 		//TODO(gavaletz) ARP
 		return
@@ -81,16 +62,14 @@ func (p *Packet) decode() {
 		return
 	}
 
-	switch proto {
+	var pl []byte // the transport layer payload
+	switch p.Headers[NetworkLayer].(InetProtoHdr).Proto() {
 	case C.IPPROTO_TCP:
-		var tcpHead *TcpHdr
-		tcpHead, buf = NewTcpHdr(buf)
-		p.Headers[TransportLayer] = tcpHead
-		pl = tcpHead.GetPayloadBytes(payloadLength)
+		p.Headers[TransportLayer], _ = NewTcpHdr(buf)
+		pl = p.Headers[TransportLayer].(*TcpHdr).GetPayloadBytes(
+			p.Headers[NetworkLayer].(InetProtoHdr).PL())
 	case C.IPPROTO_UDP:
-		var udpHead *UdpHdr
-		udpHead, buf = NewUdpHdr(buf)
-		p.Headers[TransportLayer] = udpHead
+		p.Headers[TransportLayer], _ = NewUdpHdr(buf)
 		return
 	case C.IPPROTO_ICMP:
 		//TODO(gavaletz) ICMP

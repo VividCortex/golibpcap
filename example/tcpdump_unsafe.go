@@ -12,6 +12,7 @@ import (
 	"log"
 
 	"code.google.com/p/golibpcap/pcap"
+	"code.google.com/p/golibpcap/pcap/pkt"
 )
 
 var (
@@ -110,28 +111,29 @@ func main() {
 	}
 
 	// Start decoding packets until we receive the signal to stop (nil pkt).
+	var p *pkt.Packet
 	if *verbose {
 		for {
-			pkt := <-h.Pchan
-			if pkt == nil {
+			p = <-h.Pchan
+			if p == nil {
 				break
 			}
-			fmt.Println(pkt.JsonString())
+			fmt.Println(p.JsonString())
 		}
 	} else if *quiet {
 		for {
-			pkt := <-h.Pchan
-			if pkt == nil {
+			p = <-h.Pchan
+			if p == nil {
 				break
 			}
 		}
 	} else {
 		for {
-			pkt := <-h.Pchan
-			if pkt == nil {
+			p = <-h.Pchan
+			if p == nil {
 				break
 			}
-			fmt.Println(pkt.String())
+			fmt.Println(p.String())
 		}
 	}
 	s, err := h.Getstats()

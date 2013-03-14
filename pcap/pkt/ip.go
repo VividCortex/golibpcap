@@ -6,6 +6,7 @@ package pkt
 
 import (
 	"fmt"
+	"net"
 )
 
 // JsonElement returns a JSON encoding of the IpHdr struct.
@@ -31,4 +32,24 @@ func (h *IpHdr) String() string {
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.Protocol)
+}
+
+// Src returns the network layer source address.
+func (h *IpHdr) Src() net.IP {
+	return h.SrcAddr
+}
+
+// Dst returns the network layer destination address.
+func (h *IpHdr) Dst() net.IP {
+	return h.DstAddr
+}
+
+// Proto returns the IP protocol number.
+func (h *IpHdr) Proto() uint8 {
+	return h.Protocol
+}
+
+// PL returns the Payload length.
+func (h *IpHdr) PL() uint16 {
+	return h.PayloadLen
 }

@@ -8,6 +8,7 @@ package pkt
 
 import (
 	"fmt"
+	"net"
 	"strings"
 )
 
@@ -39,6 +40,15 @@ type Hdr interface {
 	JsonElement() string
 	CsvElement() string
 	String() string
+}
+
+// The InetProtoHdr interface allows us to deal with IPv4 and IPv6 headers
+// in aggregate.
+type InetProtoHdr interface {
+	Src() net.IP
+	Dst() net.IP
+	Proto() uint8
+	PL() uint16
 }
 
 // JsonString  returns a JSON encoding of the Packet struct.

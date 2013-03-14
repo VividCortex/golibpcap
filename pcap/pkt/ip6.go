@@ -6,6 +6,7 @@ package pkt
 
 import (
 	"fmt"
+	"net"
 )
 
 // JsonElement returns a JSON encoding of the Ip6Hdr struct.
@@ -31,4 +32,24 @@ func (h *Ip6Hdr) String() string {
 		h.SrcAddr.String(),
 		h.DstAddr.String(),
 		h.NextHeader)
+}
+
+// Src returns the network layer source address.
+func (h *Ip6Hdr) Src() net.IP {
+	return h.SrcAddr
+}
+
+// Dst returns the network layer destination address.
+func (h *Ip6Hdr) Dst() net.IP {
+	return h.DstAddr
+}
+
+// Proto returns the IP protocol number.
+func (h *Ip6Hdr) Proto() uint8 {
+	return h.NextHeader
+}
+
+// PL returns the Payload length.
+func (h *Ip6Hdr) PL() uint16 {
+	return h.PayloadLen
 }
