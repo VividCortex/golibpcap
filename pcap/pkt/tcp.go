@@ -8,6 +8,21 @@ import (
 	"fmt"
 )
 
+// TCP flags: use these constants bitwise with the TcpHdr.Flags field to detect
+// the presence of a particular TCP flag.
+const (
+	TCP_NULL = uint16(0x0000) // No flags set
+	TCP_FIN  = uint16(0x0001) // No more data from sender
+	TCP_SYN  = uint16(0x0002) // Synchronize sequence numbers
+	TCP_RST  = uint16(0x0004) // Reset the connection
+	TCP_PSH  = uint16(0x0008) // Push the buffered data
+	TCP_ACK  = uint16(0x0010) // Acknowledgment field is significant
+	TCP_URG  = uint16(0x0020) // Urgent pointer field is significant
+	TCP_ECE  = uint16(0x0040) // ECN-Echo
+	TCP_CWR  = uint16(0x0080) // Congestion Window Reduced
+	TCP_NS   = uint16(0x0100) // ECN-nonce concealment protection
+)
+
 // JsonElement returns a JSON encoding of the TcpHdr struct.
 func (h *TcpHdr) JsonElement() string {
 	return fmt.Sprintf("\"tcphdr\":{\"source\":%d,\"dest\":%d,\"seq\":%d,\"ack_seq\":%d,\"flags\":%d}",
