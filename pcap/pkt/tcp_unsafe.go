@@ -36,7 +36,7 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 	tcpHead := &TcpHdr{
 		cptr: (*C.struct_tcphdr)(p),
 		// Since cgo does not provide access to bit fields in a struct
-		// we index 14 octets in and then shift out the unneeded bits.
+		// we index 12 octets in and then shift out the unneeded bits.
 		Doff: *(*byte)(unsafe.Pointer(uintptr(p) + uintptr(12))) >> 4,
 	}
 	tcpHead.Source = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.source)))
@@ -45,8 +45,8 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 	tcpHead.AckSeq = uint32(C.ntohl(C.uint32_t(tcpHead.cptr.ack_seq)))
 	// A this time (and there are no plans to support it) cgo does not
 	// provide access to bit fields in a struct so this is what we are stuck
-	// with.  We index 14 octets in and then use a bit mask.
-	tcpHead.Flags = *(*uint16)(unsafe.Pointer(uintptr(p) + uintptr(14))) & 0x1FF
+	// with.  We index 12 octets in and then use a bit mask.
+	tcpHead.Flags = *(*uint16)(unsafe.Pointer(uintptr(p) + uintptr(12))) & uint16(0x01FF)
 	tcpHead.Window = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.window)))
 	tcpHead.Check = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.check)))
 	tcpHead.UrgPtr = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.urg_ptr)))
