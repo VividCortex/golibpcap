@@ -46,7 +46,8 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 	// A this time (and there are no plans to support it) cgo does not
 	// provide access to bit fields in a struct so this is what we are stuck
 	// with.  We index 12 octets in and then use a bit mask.
-	tcpHead.Flags = *(*uint16)(unsafe.Pointer(uintptr(p) + uintptr(12))) & uint16(0x01FF)
+	tcpHead.Flags = uint16(C.ntohs(C.uint16_t(
+		*(*uint16)(unsafe.Pointer(uintptr(p) + uintptr(12)))))) & uint16(0x01FF)
 	tcpHead.Window = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.window)))
 	tcpHead.Check = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.check)))
 	tcpHead.UrgPtr = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.urg_ptr)))
