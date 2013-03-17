@@ -2,13 +2,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// WARNING: This package is experimental and may change without notice!
+//
 // The trace package provides support for analyzing and storing the data
 // gathered by the pcap package.
 //
 package trace
 
 import (
+	"compress/gzip"
 	"encoding/gob"
+	"io"
 	"time"
 
 	"code.google.com/p/golibpcap/pcap/pkt"
@@ -49,4 +53,29 @@ type MetaPcap struct {
 	Promisc int32    // 0->false, 1->true
 	Timeout int32    // ms
 	Filters []string // track filters applied to the capture
+}
+
+// PktTraceFromArchive reads a given gzip compressed gob encoded PktTrace.  This
+// is the standard format for storing a PktTrace to a file.
+func PktTraceFromArchive(r io.Reader) (*PktTrace, error) {
+	t := &PktTrace{}
+	gz, err := gzip.NewReader(r)
+	if err != nil {
+		return t, err
+	}
+	defer gz.Close()
+	gd := gob.NewDecoder(gz)
+	err = gd.Decode(t)
+	return t, err
+}
+
+// ToArchive saves a PktTrace to a gzip compressed gob encoded file.
+func (t *PktTrace) ToArchive(w io.Writer) error {
+	gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+	ge := gob.NewEncoder(gz)
+	return ge.Encode(t)
 }

@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"code.google.com/p/golibpcap/pcap"
 	"code.google.com/p/golibpcap/pcap/pkt"
@@ -18,6 +19,7 @@ import (
 var (
 	device    *string = flag.String("i", "", "interface")
 	expr      *string = flag.String("e", "", "filter expression")
+	writeFile *string = flag.String("w", "", "archive file")
 	buffLimit *int    = flag.Int("b", 0, "buffer limit (>=102400)")
 	pCount    *int    = flag.Int("c", 0, "packet count")
 	snaplen   *int    = flag.Int("s", 65535, "snaplen")
@@ -110,30 +112,55 @@ func main() {
 		go h.Loop(-1)
 	}
 
-	// Start decoding packets until we receive the signal to stop (nil pkt).
-	var p *pkt.Packet
-	if *verbose {
-		for {
-			p = <-h.Pchan
-			if p == nil {
-				break
-			}
-			fmt.Println(p.JsonString())
+	// If given a writeFile we should listen quietly.
+	if *writeFile != "" {
+		r := make(chan *[]*pkt.Packet, 1)
+
+		// h.Listen will accumulate the results that will be passed back
+		// on the channel r that was just created.
+		go h.Listen(r)
+
+		// Here we convert the container that was used to accumulate the
+		// results into an easier to work with trace.PktTrace.
+		t, err := h.NewPktTrace(<-r)
+		if err != nil {
+			log.Printf("main:h.NewPktTrace: %v", err)
 		}
-	} else if *quiet {
-		for {
-			p = <-h.Pchan
-			if p == nil {
-				break
-			}
+		w, err := os.Create(*writeFile)
+		if err != nil {
+			log.Printf("main:os.Create: %v", err)
 		}
+		err = t.ToArchive(w)
+		if err != nil {
+			log.Printf("main:t.ToArchive: %v", err)
+		}
+		w.Close()
 	} else {
-		for {
-			p = <-h.Pchan
-			if p == nil {
-				break
+		// Start decoding packets until we receive the signal to stop (nil pkt).
+		var p *pkt.Packet
+		if *verbose {
+			for {
+				p = <-h.Pchan
+				if p == nil {
+					break
+				}
+				fmt.Println(p.JsonString())
 			}
-			fmt.Println(p.String())
+		} else if *quiet {
+			for {
+				p = <-h.Pchan
+				if p == nil {
+					break
+				}
+			}
+		} else {
+			for {
+				p = <-h.Pchan
+				if p == nil {
+					break
+				}
+				fmt.Println(p.String())
+			}
 		}
 	}
 	s, err := h.Getstats()
