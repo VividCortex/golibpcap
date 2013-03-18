@@ -12,6 +12,7 @@ package trace
 import (
 	"compress/gzip"
 	"encoding/gob"
+	"errors"
 	"io"
 	"time"
 
@@ -20,7 +21,20 @@ import (
 )
 
 const (
-	Version = "beta-0-0-0"
+	Version = "beta-0-0-0" // For compatibility checks if PktTrace changes
+)
+
+// Package errors
+var (
+	ErrBadPort              = errors.New("No ports match")
+	ErrNetworkLayerHeader   = errors.New("Network Layer Header Error")
+	ErrSameSrcDstPorts      = errors.New("Src and Dst ports match")
+	ErrTransportLayerHeader = errors.New("Transport Layer Header Error")
+)
+
+var (
+	ApplicationLayer = 3       // Index for OSI Application Layer in Pkt.Headers
+	ServerSrcPort    = int(80) // Expected server source port
 )
 
 func init() {

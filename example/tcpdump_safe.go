@@ -7,8 +7,6 @@
 package main
 
 import (
-	"compress/gzip"
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"log"
@@ -18,7 +16,7 @@ import (
 )
 
 // main reads a given gzip compressed gob encoded trace.PktTrace and displays
-// some basic informtaiton about the trace to the console.
+// some basic information about the trace to the console.
 func main() {
 	flag.Parse()
 
@@ -30,27 +28,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("main:os.Open: %v", err)
 	}
-	gz, err := gzip.NewReader(f)
+	t, err := trace.PktTraceFromArchive(f)
 	if err != nil {
-		f.Close()
-		log.Fatalf("main:gzip.NewReader: %v", err)
+		_ = f.Close()
+		log.Fatalf("main:trace.PktTraceFromArchive: %v", err)
 	}
-	gd := gob.NewDecoder(gz)
-	t := &trace.PktTrace{}
-	err = gd.Decode(t)
-	if err != nil {
-		gz.Close()
-		f.Close()
-		log.Fatalf("main:gd.Decode: %v", err)
-	}
-	err = gz.Close()
-	if err != nil {
-		log.Printf("main:gz.Close: %v", err)
-	}
-	err = f.Close()
-	if err != nil {
-		log.Printf("main:f.Close: %v", err)
-	}
+	_ = f.Close()
+
+	// Display aggregate stats and meta data for the trace.PktTrace.
 	fmt.Printf("Version: %s\n", t.Version)
 	fmt.Printf("Date: %s\n", t.Date)
 	fmt.Printf("Notes: %s\n", t.Notes)
@@ -61,4 +46,19 @@ func main() {
 	fmt.Printf("MetaPcap.Timeout: %d\n", t.MetaPcap.Timeout)
 	fmt.Printf("MetaPcap.Filters: %v\n", t.MetaPcap.Filters)
 
+	// Display aggregate stats for the IP headers from the trace.PktTrace.
+	m := trace.GetIPTraffic(*t.Data)
+	for k, v := range m {
+		fmt.Printf("%s -- %d %d-%d %d %d\n", k, len(v.Data),
+			v.StartTime.Unix(), v.EndTime.Unix(),
+			v.Bytes, v.PLBytes)
+	}
+
+	// Display aggregate stats for the TCP headers from the trace.PktTrace.
+	tcpMap := trace.GetTCPTraffic(*t.Data)
+	for k, v := range tcpMap {
+		fmt.Printf("%s -- %d %d-%d %d %d\n", k, len(v.Data),
+			v.StartTime.Unix(), v.EndTime.Unix(),
+			v.SrcPktCnt, v.DstPktCnt)
+	}
 }
