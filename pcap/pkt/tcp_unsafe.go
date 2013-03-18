@@ -55,11 +55,6 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 	return tcpHead, tcpHead.payload
 }
 
-// PayloadLen returns the length of the TCP packet's payload in bytes.
-func (h *TcpHdr) PayloadLen(pl uint16) uint16 {
-	return pl - uint16(h.Doff*4)
-}
-
 // GetPayloadBytes returns the bytes from the packet's payload.  This is a Go
 // slice backed by the C bytes.  The result is that the Go slice uses very
 // little extra memory.

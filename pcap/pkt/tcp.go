@@ -23,6 +23,11 @@ const (
 	TCP_NS   = uint16(0x0100) // ECN-nonce concealment protection
 )
 
+// PayloadLen returns the length of the TCP packet's payload in bytes.
+func (h *TcpHdr) PayloadLen(pl uint16) uint16 {
+	return pl - uint16(h.Doff*4)
+}
+
 // JsonElement returns a JSON encoding of the TcpHdr struct.
 func (h *TcpHdr) JsonElement() string {
 	return fmt.Sprintf("\"tcphdr\":{\"source\":%d,\"dest\":%d,\"seq\":%d,\"ack_seq\":%d,\"flags\":%d}",
