@@ -35,7 +35,7 @@ func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
 	p := &Packet{
-		Time:    time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)),
+		Time:    time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec) * 1000),
 		Caplen:  uint32(pkthdr.caplen),
 		Len:     uint32(pkthdr.len),
 		Headers: make([]Hdr, 3),
