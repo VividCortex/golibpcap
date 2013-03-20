@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	Version = "beta-0-0-0" // For compatibility checks if PktTrace changes
+	Version     = "beta-0-0-0"       // For compatibility checks if PktTrace changes
+	ArchiveType = "application/gzip" // MIME type for archived PktTrace results
 )
 
 // Package errors
@@ -83,8 +84,8 @@ func PktTraceFromArchive(r io.Reader) (*PktTrace, error) {
 	return t, err
 }
 
-// ToArchive saves a PktTrace to a gzip compressed gob encoded file.
-func (t *PktTrace) ToArchive(w io.Writer) error {
+// Archive saves a PktTrace to a gzip compressed gob encoded file.
+func (t *PktTrace) Archive(w io.Writer) error {
 	gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	if err != nil {
 		return err

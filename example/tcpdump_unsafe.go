@@ -130,9 +130,9 @@ func main() {
 		if err != nil {
 			log.Printf("main:os.Create: %v", err)
 		}
-		err = t.ToArchive(w)
+		err = t.Archive(w)
 		if err != nil {
-			log.Printf("main:t.ToArchive: %v", err)
+			log.Printf("main:t.Archive: %v", err)
 		}
 		w.Close()
 	} else {

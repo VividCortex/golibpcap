@@ -33,6 +33,7 @@ var (
 	OptimizeFilters = 1            // Tells the bpf compiler to optimize filters.
 	DefaultSnaplen  = int32(65535) // number of bytes to capture per packet.
 	DefaultPromisc  = int32(1)     // 0->false, 1->true
+	DefaultTimeout  = int32(0)     // ms 0->no timeout
 )
 
 //export goCallBack
@@ -156,9 +157,9 @@ func (p *Pcap) Open() error {
 	return nil
 }
 
-// Close closes a off-line pcap savefile.
+// Close closes the files associated with p and deallocates C resources.
 func (p *Pcap) Close() {
-	if p.FileName != "" {
+	if p.cptr != nil {
 		C.pcap_close(p.cptr)
 	}
 }
