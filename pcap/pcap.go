@@ -91,7 +91,7 @@ func (p *Pcap) OpenFile() error {
 	if p.cptr == nil {
 		return errors.New(C.GoString(buf))
 	}
-	//TODO(gavaletz) grab the file header information.
+	p.Snaplen = int32(C.pcap_snapshot(p.cptr))
 	return nil
 }
 
@@ -278,6 +278,8 @@ func (p *Pcap) Next() *pkt.Packet {
 // -1	an error occurred while reading the packet
 // -2	packets are being read from a file, and there are no more packets to read
 func (p *Pcap) NextEx() (*pkt.Packet, int32) {
+	//TODO(gavaletz) protect the memory in pkthdr_ptr and buf_ptr for decode
+	// pcap_next_ex re-uses the same memory
 	var pkthdr_ptr *C.struct_pcap_pkthdr
 	var buf_ptr *C.u_char
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
@@ -308,7 +310,6 @@ func (p *Pcap) Getstats() (*stat.Stat, error) {
 
 // Setfilter compiles a filter string into a bpf program and sets the filter.
 func (p *Pcap) Setfilter(expr string) error {
-	//TODO(gavaletz) figure out why this is not working off-line.
 	cexpr := C.CString(expr)
 	defer C.free(unsafe.Pointer(cexpr))
 
@@ -334,14 +335,16 @@ func (p *Pcap) Setfilter(expr string) error {
 // NewPktTrace is a beta function and should be treated as such.
 func (p *Pcap) NewPktTrace(data *[]*pkt.Packet) (*trace.PktTrace, error) {
 	t := &trace.PktTrace{
-		Version: trace.Version,
-		Date:    time.Now(),
+		Version:    trace.Version,
+		LibVersion: LibVersion(),
+		Date:       time.Now(),
 		MetaPcap: &trace.MetaPcap{
-			Device:  p.Device,
-			Snaplen: p.Snaplen,
-			Promisc: p.Promisc,
-			Timeout: p.Timeout,
-			Filters: make([]string, len(p.Filters)),
+			Device:   p.Device,
+			FileName: p.FileName,
+			Snaplen:  p.Snaplen,
+			Promisc:  p.Promisc,
+			Timeout:  p.Timeout,
+			Filters:  make([]string, len(p.Filters)),
 		},
 		Data: data,
 	}

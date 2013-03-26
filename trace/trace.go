@@ -21,16 +21,20 @@ import (
 )
 
 const (
-	Version     = "beta-0-0-0"       // For compatibility checks if PktTrace changes
+	Version     = "beta-0-0-1"       // For compatibility checks if PktTrace changes
 	ArchiveType = "application/gzip" // MIME type for archived PktTrace results
 )
 
 // Package errors
 var (
-	ErrBadPort              = errors.New("No ports match")
-	ErrNetworkLayerHeader   = errors.New("Network Layer Header Error")
-	ErrSameSrcDstPorts      = errors.New("Src and Dst ports match")
-	ErrTransportLayerHeader = errors.New("Transport Layer Header Error")
+	ErrApplicationLayerHeader = errors.New("Application Layer Header Error")
+	ErrBadPort                = errors.New("No ports match")
+	ErrEmptyData              = errors.New("Data is empty")
+	ErrFlowMismatch           = errors.New("Flows do not match")
+	ErrNetworkLayerHeader     = errors.New("Network Layer Header Error")
+	ErrSameSrcDstPorts        = errors.New("Src and Dst ports match")
+	ErrTCPSeqMissing          = errors.New("TCP Sequnce Number Missing")
+	ErrTransportLayerHeader   = errors.New("Transport Layer Header Error")
 )
 
 var (
@@ -51,23 +55,25 @@ func init() {
 // A PktTrace combines the pkt.Packet data with meta data so that it can be
 // archived and analyzed.
 type PktTrace struct {
-	Version  string         // For trace version compatibility issues
-	Date     time.Time      // Date the trace was created
-	Notes    string         // Meta data not otherwise specified
-	MetaPcap *MetaPcap      // Meta data from pcap.Pcap
-	Stats    *stat.Stat     // Capture stats straight from libpcap
-	Data     *[]*pkt.Packet // The headers of the captured packets
+	Version    string         // For trace version compatibility issues
+	LibVersion string         // The version of libpcap being used
+	Date       time.Time      // Date the trace was created
+	Notes      string         // Meta data not otherwise specified
+	MetaPcap   *MetaPcap      // Meta data from pcap.Pcap
+	Stats      *stat.Stat     // Capture stats straight from libpcap
+	Data       *[]*pkt.Packet // The headers of the captured packets
 }
 
 // A MetaPcap is a copy of the meta data from pcap.Pcap.  We keep this copy
 // separate so that it cannot be executed by mistake, and by not depending on
 // the system's C libraries it can be more portable.
 type MetaPcap struct {
-	Device  string   // The device used for packet capture
-	Snaplen int32    // Specifies the maximum number of bytes to capture
-	Promisc int32    // 0->false, 1->true
-	Timeout int32    // ms
-	Filters []string // track filters applied to the capture
+	Device   string   // The device used for packet capture
+	FileName string   // The filename used for reading a pcap savefile
+	Snaplen  int32    // Specifies the maximum number of bytes to capture
+	Promisc  int32    // 0->false, 1->true
+	Timeout  int32    // ms
+	Filters  []string // track filters applied to the capture
 }
 
 // PktTraceFromArchive reads a given gzip compressed gob encoded PktTrace.  This

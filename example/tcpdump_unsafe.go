@@ -167,4 +167,5 @@ func main() {
 	if err == nil {
 		fmt.Printf("%s\n", s)
 	}
+	h.Close()
 }

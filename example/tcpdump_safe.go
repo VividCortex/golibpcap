@@ -37,10 +37,14 @@ func main() {
 
 	// Display aggregate stats and meta data for the trace.PktTrace.
 	fmt.Printf("Version: %s\n", t.Version)
+	fmt.Printf("LibVersion: %s\n", t.LibVersion)
 	fmt.Printf("Date: %s\n", t.Date)
 	fmt.Printf("Notes: %s\n", t.Notes)
-	fmt.Printf("Stats: \n%s\n\n", t.Stats.String())
+	if t.Stats != nil {
+		fmt.Printf("Stats: \n%s\n\n", t.Stats.String())
+	}
 	fmt.Printf("MetaPcap.Device: %s\n", t.MetaPcap.Device)
+	fmt.Printf("MetaPcap.FileName: %s\n", t.MetaPcap.FileName)
 	fmt.Printf("MetaPcap.Snaplen: %d\n", t.MetaPcap.Snaplen)
 	fmt.Printf("MetaPcap.Promisc: %d\n", t.MetaPcap.Promisc)
 	fmt.Printf("MetaPcap.Timeout: %d\n", t.MetaPcap.Timeout)
