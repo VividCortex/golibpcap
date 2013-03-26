@@ -81,3 +81,23 @@ func (t *TCPTuple) Equal(x *TCPTuple) bool {
 	}
 	return false
 }
+
+// REqual returns true if both source addresses match both destination addresses.
+func (t *TCPTuple) REqual(x *TCPTuple) bool {
+	if x == nil {
+		return false
+	}
+	if t.Src.Port == x.Dst.Port {
+		if t.Dst.Port == x.Src.Port {
+			if t.Src.IP.Equal(x.Dst.IP) {
+				return t.Dst.IP.Equal(x.Src.IP)
+			}
+		}
+	}
+	return false
+}
+
+// MatchFlow returns t.Equal || t.REqual
+func (t *TCPTuple) MatchFlow(x *TCPTuple) bool {
+	return t.Equal(x) || t.REqual(x)
+}
