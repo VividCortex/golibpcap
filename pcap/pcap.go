@@ -20,6 +20,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -38,8 +39,10 @@ var (
 
 //export goCallBack
 func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
-	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
 	p := (*Pcap)(unsafe.Pointer(user))
+	p.m.Lock()
+	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+	p.m.Unlock()
 	p.Pchan <- packet
 	p.pktCnt++
 }
@@ -63,9 +66,10 @@ type Pcap struct {
 	Promisc  int32            // 0->false, 1->true
 	Timeout  int32            // ms
 	Filters  []string         // track filters applied to the capture
+	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
 	cptr     *C.pcap_t        // C Pointer to pcap_t
 	pktCnt   uint32           // the number of packets captured
-	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
+	m        *sync.Mutex      // Mutex to protect the packet memory for decode
 }
 
 // OpenOffline returns a *Pcap and opens it to read pcap packets from a save file.
@@ -73,6 +77,7 @@ func OpenOffline(file string) (*Pcap, error) {
 	p := &Pcap{
 		FileName: file,
 		Pchan:    make(chan *pkt.Packet, ChanBuffSize),
+		m:        &sync.Mutex{},
 	}
 
 	return p, p.OpenFile()
@@ -102,6 +107,7 @@ func Create(device string) (*Pcap, error) {
 	p := &Pcap{
 		Device: device,
 		Pchan:  make(chan *pkt.Packet, ChanBuffSize),
+		m:      &sync.Mutex{},
 	}
 
 	buf := (*C.char)(C.calloc(C.PCAP_ERRBUF_SIZE, 1))
@@ -124,6 +130,7 @@ func OpenLive(device string, snaplen int32, promisc bool, timeout_ms int32) (*Pc
 		Snaplen: snaplen,
 		Timeout: timeout_ms,
 		Pchan:   make(chan *pkt.Packet, ChanBuffSize),
+		m:       &sync.Mutex{},
 	}
 	if promisc {
 		p.Promisc = 1
@@ -160,7 +167,9 @@ func (p *Pcap) Open() error {
 // Close closes the files associated with p and deallocates C resources.
 func (p *Pcap) Close() {
 	if p.cptr != nil {
+		p.m.Lock()
 		C.pcap_close(p.cptr)
+		p.m.Unlock()
 	}
 }
 
@@ -256,7 +265,6 @@ func (p *Pcap) Listen(r chan *[]*pkt.Packet) {
 // BreakLoop stops the reading of packets.
 func (p *Pcap) BreakLoop() {
 	C.pcap_breakloop(p.cptr)
-	p.Pchan <- nil
 }
 
 // DelayBreakLoop stops the reading of packets after t seconds.
@@ -278,13 +286,13 @@ func (p *Pcap) Next() *pkt.Packet {
 // -1	an error occurred while reading the packet
 // -2	packets are being read from a file, and there are no more packets to read
 func (p *Pcap) NextEx() (*pkt.Packet, int32) {
-	//TODO(gavaletz) protect the memory in pkthdr_ptr and buf_ptr for decode
-	// pcap_next_ex re-uses the same memory
 	var pkthdr_ptr *C.struct_pcap_pkthdr
 	var buf_ptr *C.u_char
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
 	if res == 1 {
+		p.m.Lock()
 		packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+		p.m.Unlock()
 		p.pktCnt++
 		return packet, res
 	}
