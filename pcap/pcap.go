@@ -29,12 +29,17 @@ import (
 	"code.google.com/p/golibpcap/trace"
 )
 
+// Safe default values.  These are probably far from optimal for most systems.
+const (
+	DefaultBuffer  = int32(102400) // buffer limit
+	DefaultPromisc = int32(1)      // 0->false, 1->true
+	DefaultSnaplen = int32(65535)  // number of bytes to capture per packet.
+	DefaultTimeout = int32(0)      // ms 0->no timeout
+)
+
 var (
-	ChanBuffSize    = 5000         // How many packets can we buffer in our channel.
-	OptimizeFilters = 1            // Tells the bpf compiler to optimize filters.
-	DefaultSnaplen  = int32(65535) // number of bytes to capture per packet.
-	DefaultPromisc  = int32(1)     // 0->false, 1->true
-	DefaultTimeout  = int32(0)     // ms 0->no timeout
+	ChanBuffSize    = 5000 // How many packets can we buffer in our channel.
+	OptimizeFilters = 1    // Tells the bpf compiler to optimize filters.
 )
 
 //export goCallBack
