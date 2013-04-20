@@ -1,5 +1,5 @@
-// Copyright 2012 The golibpcap Authors. All rights reserved.                        
-// Use of this source code is governed by a BSD-style                              
+// Copyright 2012 The golibpcap Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // +build !safe,!appengine
@@ -269,16 +269,23 @@ func (p *Pcap) Listen(r chan *[]*pkt.Packet) {
 
 // BreakLoop stops the reading of packets.
 func (p *Pcap) BreakLoop() {
-	C.pcap_breakloop(p.cptr)
+	// pcap_breakloop will block while waiting on a packet to arrive after
+	// it sets a flag to stop the loop.  This can be bad if you are calling
+	// BreakLoop on a connection that has already disconnected.  For this
+	// reason we are calling C.pcap_breakloop in another goroutine and
+	// timing out after 1 ms.
+	go C.pcap_breakloop(p.cptr)
+	<-time.After(time.Millisecond)
+	p.Pchan <- nil
 }
 
 // DelayBreakLoop stops the reading of packets after t seconds.
 func (p *Pcap) DelayBreakLoop(t int) {
-	time.Sleep(time.Duration(t) * time.Second)
+	<-time.After(time.Duration(t) * time.Second)
 	p.BreakLoop()
 }
 
-// Next is a wrapper for NextEx(). 
+// Next is a wrapper for NextEx().
 func (p *Pcap) Next() *pkt.Packet {
 	rv, _ := p.NextEx()
 	return rv
