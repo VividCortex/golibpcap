@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
 )
 
 // An IPTuple encapsulates the source and destination address for analysing IP
