@@ -7,7 +7,7 @@ package trace
 import (
 	"net"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
 )
 
 // A HTTPExchange makes working with HTTP data easier.  The TCPTuple will have

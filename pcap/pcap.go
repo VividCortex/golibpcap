@@ -24,9 +24,9 @@ import (
 	"time"
 	"unsafe"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
-	"code.google.com/p/golibpcap/pcap/stat"
-	"code.google.com/p/golibpcap/trace"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/stat"
+	"github.com/VividCortex/golibpcap/trace"
 )
 
 // Safe default values.  These are probably far from optimal for most systems.

@@ -12,8 +12,8 @@ import (
 	"log"
 	"os"
 
-	"code.google.com/p/golibpcap/pcap"
-	"code.google.com/p/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
 )
 
 var (
