@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 
-	"code.google.com/p/golibpcap/trace"
+	"github.com/VividCortex/golibpcap/trace"
 )
 
 // main reads a given gzip compressed gob encoded trace.PktTrace and displays

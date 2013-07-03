@@ -16,8 +16,8 @@ import (
 	"io"
 	"time"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
-	"code.google.com/p/golibpcap/pcap/stat"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/stat"
 )
 
 const (

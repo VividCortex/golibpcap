@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
 )
 
 // A TCPFlow makes working with TCP data easier.

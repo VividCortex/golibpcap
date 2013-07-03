@@ -7,7 +7,7 @@ package trace
 import (
 	"time"
 
-	"code.google.com/p/golibpcap/pcap/pkt"
+	"github.com/VividCortex/golibpcap/pcap/pkt"
 )
 
 // An IPFlow makes working with IP data easier.
