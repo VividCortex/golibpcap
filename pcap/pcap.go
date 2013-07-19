@@ -13,7 +13,7 @@ package pcap
 /*
 #cgo LDFLAGS: libpcap.a
 #include <stdlib.h>
-#include <pcap.h>
+#include "pcap.h"
 #include "libpcap.h"
 */
 import "C"
