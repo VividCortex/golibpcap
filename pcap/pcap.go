@@ -11,7 +11,7 @@
 package pcap
 
 /*
-#cgo LDFLAGS: libpcap.a
+#cgo LDFLAGS: /usr/lib/libpcap.a
 #include <stdlib.h>
 #include "pcap.h"
 #include "libpcap.h"

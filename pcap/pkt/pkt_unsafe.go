@@ -7,7 +7,7 @@
 package pkt
 
 /*
-#cgo LDFLAGS: ../libpcap.a
+#cgo LDFLAGS: /usr/lib/libpcap.a
 #include "../pcap.h"
 #include <net/ethernet.h>
 #include <netinet/if_ether.h>
