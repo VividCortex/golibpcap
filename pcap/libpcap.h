@@ -4,7 +4,7 @@
 
 // These are definitions that pcap.go needs.
 #include <stdlib.h>
-#include <pcap.h>
+#include "pcap.h"
 
 // Defined in pcap.go
 extern void goCallBack(u_char *, struct pcap_pkthdr *, u_char *);

@@ -1,6 +1,11 @@
-/*
- * Copyright (c) 1993, 1994, 1995, 1996, 1997
+/*-
+ * Copyright (c) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from the Stanford/CMU enet packet filter,
+ * (net/enet.c) distributed as part of 4.3BSD, and code contributed
+ * to Berkeley by Steven McCanne and Van Jacobson both of Lawrence
+ * Berkeley Laboratory.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,11 +17,11 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the Computer Systems
- *	Engineering Group at Lawrence Berkeley Laboratory.
- * 4. Neither the name of the University nor of the Laboratory may be used
- *    to endorse or promote products derived from this software without
- *    specific prior written permission.
+ *      This product includes software developed by the University of
+ *      California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,17 +34,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) $Header: /tcpdump/master/libpcap/pcap.h,v 1.59 2006-10-04 18:09:22 guy Exp $ (LBL)
  */
 
-/*
- * For backwards compatibility.
- *
- * Note to OS vendors: do NOT get rid of this file!  Many applications
- * expect to be able to include <pcap.h>, and at least some of them
- * go through contortions in their configure scripts to try to detect
- * OSes that have "helpfully" moved pcap.h to <pcap/pcap.h> without
- * leaving behind a <pcap.h> file.
- */
-#include "pcap/pcap.h"
+#define	IPH_AF_INET	2		/* Matches Solaris's AF_INET */
+#define	IPH_AF_INET6	26		/* Matches Solaris's AF_INET6 */
+
+#define	IPNET_OUTBOUND		1
+#define	IPNET_INBOUND		2
