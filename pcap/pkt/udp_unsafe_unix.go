@@ -30,10 +30,10 @@ func NewUdpHdr(p unsafe.Pointer) (*UdpHdr, unsafe.Pointer) {
 	udpHead := &UdpHdr{
 		cptr: (*C.struct_udphdr)(p),
 	}
-	udpHead.Source = uint16(C.ntohs(C.uint16_t(udpHead.cptr.source)))
-	udpHead.Dest = uint16(C.ntohs(C.uint16_t(udpHead.cptr.dest)))
-	udpHead.Len = uint16(C.ntohs(C.uint16_t(udpHead.cptr.len)))
-	udpHead.Check = uint16(C.ntohs(C.uint16_t(udpHead.cptr.check)))
+	udpHead.Source = uint16(C.ntohs(C.uint16_t(udpHead.cptr.uh_sport)))
+	udpHead.Dest = uint16(C.ntohs(C.uint16_t(udpHead.cptr.uh_dport)))
+	udpHead.Len = uint16(C.ntohs(C.uint16_t(udpHead.cptr.uh_ulen)))
+	udpHead.Check = uint16(C.ntohs(C.uint16_t(udpHead.cptr.uh_sum)))
 	udpHead.payload = unsafe.Pointer(uintptr(p) + 8)
 	return udpHead, udpHead.payload
 }
