@@ -31,8 +31,7 @@ func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 	}
 	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETHER_ADDR_LEN))
 	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETHER_ADDR_LEN))
-	//C.ntohs()
-	//ethHdr.EtherType = uint16(C.ntohs(C.uint16_t(ethHdr.cptr.ether_type)))
+	ethHdr.EtherType = uint16(C.ntohs(C.uint16_t(ethHdr.cptr.ether_type)))
 
 	// When using the Linux "any" device we have to handle cooked headers.
 	// To determine if you could be in this case you can use pcap_datalink()
