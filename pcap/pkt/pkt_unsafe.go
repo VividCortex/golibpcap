@@ -61,12 +61,9 @@ func (p *Packet) decode() {
 		return
 	}
 
-	var pl []byte // the transport layer payload
 	switch p.Headers[NetworkLayer].(InetProtoHdr).Proto() {
 	case C.IPPROTO_TCP:
 		p.Headers[TransportLayer], _ = NewTcpHdr(buf)
-		pl = p.Headers[TransportLayer].(*TcpHdr).GetPayloadBytes(
-			p.Headers[NetworkLayer].(InetProtoHdr).PL())
 	case C.IPPROTO_UDP:
 		p.Headers[TransportLayer], _ = NewUdpHdr(buf)
 		return
@@ -76,15 +73,4 @@ func (p *Packet) decode() {
 	default:
 		return
 	}
-
-	// Looks to see if a packet represents the beginning of an  HTTP request
-	// or a HTTP response from the server.  This goes beyond the normal pcap
-	// library operations.
-	if len(pl) > 14 {
-		httpHdr := NewHttpHdr(pl)
-		if httpHdr != nil {
-			p.Headers = append(p.Headers, httpHdr)
-		}
-	}
-	//TODO(gavaletz) SDPY
 }
