@@ -2,14 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!safe,!appengine
-
 package pkt
 
 /*
 #include "../pcap.h"
 #include <net/ethernet.h>
-#include <netinet/if_ether.h>
 #include <netinet/in.h>
 */
 import "C"
@@ -73,4 +70,5 @@ func (p *Packet) decode() {
 	default:
 		return
 	}
+
 }

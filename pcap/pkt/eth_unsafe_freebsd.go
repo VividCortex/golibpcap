@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!safe,!appengine
-
 package pkt
 
 /*
+#include <sys/types.h>
 #include <net/ethernet.h>
-#include <netinet/ether.h>
 #include <netinet/in.h>
 */
 import "C"
@@ -31,8 +29,8 @@ func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 	ethHdr := &EthHdr{
 		cptr: (*C.struct_ether_header)(p),
 	}
-	//	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETH_ALEN))
-	//	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETH_ALEN))
+	//	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETHER_ADDR_LEN))
+	//	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETHER_ADDR_LEN))
 	ethHdr.EtherType = uint16(C.ntohs(C.uint16_t(ethHdr.cptr.ether_type)))
 
 	// When using the Linux "any" device we have to handle cooked headers.
