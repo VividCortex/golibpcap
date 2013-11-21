@@ -11,6 +11,9 @@ package pkt
 #include <net/ethernet.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 */
 import "C"
 import (
@@ -72,5 +75,64 @@ func (p *Packet) decode() {
 		return
 	default:
 		return
+	}
+}
+
+type TcpPacket struct {
+	DstAddr   []byte
+	SrcAddr   []byte
+	AckSeq    uint32
+	Seq       uint32
+	Source    uint16
+	Dest      uint16
+	Flags     uint16
+	Payload   []byte
+	Timestamp time.Time
+	IsRequest bool
+}
+
+func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
+	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
+
+	// unwrap ethernet packet
+	var ethhdr = (*C.struct_ether_header)(buf_ptr)
+	var ethtype = uint16(C.ntohs(C.uint16_t(ethhdr.ether_type)))
+	if ethtype == 0 {
+		// The "cooked" headers have an extra two bytes.
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
+	} else {
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
+	}
+
+	if ethtype != C.ETHERTYPE_IP && ethtype != 0 {
+		return nil
+	}
+
+	// unwrap ip packet
+	var iphdr = (*C.struct_iphdr)(buf_ptr)
+	var iphdrlen = *(*byte)(buf_ptr) & 0x0F
+	var paylen = uint16(C.ntohs(C.uint16_t(iphdr.tot_len))) - uint16(iphdrlen*4)
+
+	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen*4))
+
+	if uint8(iphdr.protocol) != C.IPPROTO_TCP {
+		return nil
+	}
+
+	// unwrap tcp packet
+	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
+	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
+
+	return &TcpPacket{
+		DstAddr:   C.GoBytes(unsafe.Pointer(&iphdr.daddr), 4),
+		SrcAddr:   C.GoBytes(unsafe.Pointer(&iphdr.saddr), 4),
+		AckSeq:    uint32(C.ntohl(C.uint32_t(tcphdr.ack_seq))),
+		Seq:       uint32(C.ntohl(C.uint32_t(tcphdr.seq))),
+		Source:    uint16(C.ntohs(C.uint16_t(tcphdr.source))),
+		Dest:      uint16(C.ntohs(C.uint16_t(tcphdr.dest))),
+		Flags:     uint16(C.ntohs(C.uint16_t(*(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))))) & uint16(0x01FF),
+		Payload:   C.GoBytes(unsafe.Pointer(uintptr(buf_ptr)+uintptr(dataoffset*4)), C.int(paylen-uint16(dataoffset*4))),
+		Timestamp: time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
+		IsRequest: false,
 	}
 }
