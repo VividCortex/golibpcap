@@ -17,6 +17,7 @@ package pkt
 */
 import "C"
 import (
+	"reflect"
 	"time"
 	"unsafe"
 )
@@ -91,6 +92,12 @@ type TcpPacket struct {
 	IsRequest bool
 }
 
+func (this *TcpPacket) Save() {
+	var dcopy = make([]byte, len(this.Payload))
+	copy(dcopy, this.Payload)
+	this.Payload = dcopy
+}
+
 func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
@@ -123,6 +130,12 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
 	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
 
+	var data []byte
+	sh := (*reflect.SliceHeader)((unsafe.Pointer(&data)))
+	sh.Cap = int(paylen - uint16(dataoffset*4))
+	sh.Len = sh.Cap
+	sh.Data = uintptr(unsafe.Pointer(uintptr(buf_ptr) + uintptr(dataoffset*4)))
+
 	return &TcpPacket{
 		DstAddr:   C.GoBytes(unsafe.Pointer(&iphdr.daddr), 4),
 		SrcAddr:   C.GoBytes(unsafe.Pointer(&iphdr.saddr), 4),
@@ -131,7 +144,7 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 		Source:    uint16(C.ntohs(C.uint16_t(tcphdr.source))),
 		Dest:      uint16(C.ntohs(C.uint16_t(tcphdr.dest))),
 		Flags:     uint16(C.ntohs(C.uint16_t(*(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))))) & uint16(0x01FF),
-		Payload:   C.GoBytes(unsafe.Pointer(uintptr(buf_ptr)+uintptr(dataoffset*4)), C.int(paylen-uint16(dataoffset*4))),
+		Payload:   data,
 		Timestamp: time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
 		IsRequest: false,
 	}
