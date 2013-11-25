@@ -80,8 +80,8 @@ func (p *Packet) decode() {
 }
 
 type TcpPacket struct {
-	DstAddr   []byte
-	SrcAddr   []byte
+	DstAddr   uint32
+	SrcAddr   uint32
 	AckSeq    uint32
 	Seq       uint32
 	Source    uint16
@@ -103,7 +103,10 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 
 	// unwrap ethernet packet
 	var ethhdr = (*C.struct_ether_header)(buf_ptr)
-	var ethtype = uint16(C.ntohs(C.uint16_t(ethhdr.ether_type)))
+	var ethtype = uint16(ethhdr.ether_type)
+	// we are assuming little endian arch
+	ethtype = (ethtype>>8 | ethtype&uint16(0x00ff)<<8)
+
 	if ethtype == 0 {
 		// The "cooked" headers have an extra two bytes.
 		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
@@ -118,7 +121,10 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	// unwrap ip packet
 	var iphdr = (*C.struct_iphdr)(buf_ptr)
 	var iphdrlen = *(*byte)(buf_ptr) & 0x0F
-	var paylen = uint16(C.ntohs(C.uint16_t(iphdr.tot_len))) - uint16(iphdrlen*4)
+
+	var paylen = uint16(iphdr.tot_len)
+	// we are assuming little endian arch
+	paylen = (paylen>>8 | paylen&uint16(0x00ff)<<8) - uint16(iphdrlen*4)
 
 	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen*4))
 
@@ -130,22 +136,28 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
 	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
 
-	var data []byte
-	sh := (*reflect.SliceHeader)((unsafe.Pointer(&data)))
+	packet := &TcpPacket{
+		DstAddr:   uint32(iphdr.daddr),
+		SrcAddr:   uint32(iphdr.saddr),
+		AckSeq:    uint32(tcphdr.ack_seq),
+		Seq:       uint32(tcphdr.seq),
+		Source:    uint16(tcphdr.source),
+		Dest:      uint16(tcphdr.dest),
+		Flags:     *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))),
+		Timestamp: time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
+		IsRequest: false,
+	}
+
+	sh := (*reflect.SliceHeader)((unsafe.Pointer(&packet.Payload)))
 	sh.Cap = int(paylen - uint16(dataoffset*4))
 	sh.Len = sh.Cap
 	sh.Data = uintptr(unsafe.Pointer(uintptr(buf_ptr) + uintptr(dataoffset*4)))
 
-	return &TcpPacket{
-		DstAddr:   C.GoBytes(unsafe.Pointer(&iphdr.daddr), 4),
-		SrcAddr:   C.GoBytes(unsafe.Pointer(&iphdr.saddr), 4),
-		AckSeq:    uint32(C.ntohl(C.uint32_t(tcphdr.ack_seq))),
-		Seq:       uint32(C.ntohl(C.uint32_t(tcphdr.seq))),
-		Source:    uint16(C.ntohs(C.uint16_t(tcphdr.source))),
-		Dest:      uint16(C.ntohs(C.uint16_t(tcphdr.dest))),
-		Flags:     uint16(C.ntohs(C.uint16_t(*(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))))) & uint16(0x01FF),
-		Payload:   data,
-		Timestamp: time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
-		IsRequest: false,
-	}
+	// Network to hosts. Right now we are assuming little endian cpu.
+	packet.Flags = (packet.Flags>>8 | packet.Flags&uint16(0x00ff)<<8) & uint16(0x01FF)
+	packet.Dest = packet.Dest>>8 | packet.Dest&uint16(0x00ff)<<8
+	packet.Source = packet.Source>>8 | packet.Source&uint16(0x00ff)<<8
+	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
+	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
+	return packet
 }
