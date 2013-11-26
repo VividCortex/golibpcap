@@ -90,13 +90,17 @@ type TcpPacket struct {
 	Payload   []byte
 	Timestamp time.Time
 	IsRequest bool
+	saved     bool
 }
 
 func (this *TcpPacket) Save() {
 	var dcopy = make([]byte, len(this.Payload))
 	copy(dcopy, this.Payload)
 	this.Payload = dcopy
+	this.saved = true
 }
+
+var packet *TcpPacket
 
 func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
@@ -136,17 +140,19 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
 	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
 
-	packet := &TcpPacket{
-		DstAddr:   uint32(iphdr.daddr),
-		SrcAddr:   uint32(iphdr.saddr),
-		AckSeq:    uint32(tcphdr.ack_seq),
-		Seq:       uint32(tcphdr.seq),
-		Source:    uint16(tcphdr.source),
-		Dest:      uint16(tcphdr.dest),
-		Flags:     *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))),
-		Timestamp: time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
-		IsRequest: false,
+	if packet == nil || packet.saved {
+		packet = &TcpPacket{}
 	}
+
+	packet.DstAddr = uint32(iphdr.daddr)
+	packet.SrcAddr = uint32(iphdr.saddr)
+	packet.AckSeq = uint32(tcphdr.ack_seq)
+	packet.Seq = uint32(tcphdr.seq)
+	packet.Source = uint16(tcphdr.source)
+	packet.Dest = uint16(tcphdr.dest)
+	packet.Flags = *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))
+	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
+	packet.IsRequest = false
 
 	sh := (*reflect.SliceHeader)((unsafe.Pointer(&packet.Payload)))
 	sh.Cap = int(paylen - uint16(dataoffset*4))
