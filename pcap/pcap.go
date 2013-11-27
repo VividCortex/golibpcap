@@ -312,6 +312,9 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 	return nil, res
 }
 
+// NextEx2 is just like NextEx, but returns only TCP/IPv4 packets. This packet creates
+// no new heap allocations unless the previous packet was "saved" (it's Save() member
+// was called)
 func (p *Pcap) NextEx2() (*pkt.TcpPacket, int32) {
 	var pkthdr_ptr *C.struct_pcap_pkthdr
 	var buf_ptr *C.u_char

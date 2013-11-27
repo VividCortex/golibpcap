@@ -102,6 +102,11 @@ func (this *TcpPacket) Save() {
 
 var packet *TcpPacket
 
+// NewPacket2 takes a libpcap buffer and extracts only TCP/IPv4 packets into
+// packet (declared just above) without creating any new data in the heap. If
+// the recipient of this packet needs to keep a copy of it, it should call
+// func (this *TcpPacket) Save(), so the next packet will be created in a new
+// heap allocation.
 func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
