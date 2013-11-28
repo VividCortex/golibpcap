@@ -17,6 +17,7 @@ package pkt
 */
 import "C"
 import (
+	"fmt"
 	"reflect"
 	"time"
 	"unsafe"
@@ -100,14 +101,14 @@ func (this *TcpPacket) Save() {
 	this.saved = true
 }
 
-var packet *TcpPacket
-
 // NewPacket2 takes a libpcap buffer and extracts only TCP/IPv4 packets into
 // packet (declared just above) without creating any new data in the heap. If
 // the recipient of this packet needs to keep a copy of it, it should call
 // func (this *TcpPacket) Save(), so the next packet will be created in a new
 // heap allocation.
-func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
+func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, error) {
+	var packet TcpPacket
+
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
 	// unwrap ethernet packet
@@ -124,7 +125,7 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	}
 
 	if ethtype != C.ETHERTYPE_IP && ethtype != 0 {
-		return nil
+		return packet, fmt.Errorf("unsupported packet")
 	}
 
 	// unwrap ip packet
@@ -138,16 +139,12 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen*4))
 
 	if uint8(iphdr.protocol) != C.IPPROTO_TCP {
-		return nil
+		return packet, fmt.Errorf("unsupported packet")
 	}
 
 	// unwrap tcp packet
 	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
 	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
-
-	if packet == nil || packet.saved {
-		packet = &TcpPacket{}
-	}
 
 	packet.DstAddr = uint32(iphdr.daddr)
 	packet.SrcAddr = uint32(iphdr.saddr)
@@ -170,5 +167,5 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *TcpPacket {
 	packet.Source = packet.Source>>8 | packet.Source&uint16(0x00ff)<<8
 	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
 	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
-	return packet
+	return packet, nil
 }
