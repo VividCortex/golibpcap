@@ -5,70 +5,36 @@
 package pkt
 
 /*
-#include "../pcap.h"
-#include <net/ethernet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 */
 import "C"
 import (
-	"time"
 	"unsafe"
 )
 
-// The Packet struct is a wrapper for the pcap_pkthdr struct in <pcap.h>.
-type Packet struct {
-	Time    time.Time      // time stamp from the nic
-	Caplen  uint32         // length of portion present
-	Len     uint32         // length this packet (off wire)
-	Headers []Hdr          // Go wrappers for C pkt headers
-	buf     unsafe.Pointer // packet data (*C.u_char)
+func getIphdr(buf_ptr unsafe.Pointer) *C.struct_ip {
+	return (*C.struct_ip)(buf_ptr)
 }
 
-// NewPacket returns a parsed and decoded Packet.
-// pkthdr_ptr should be a *C.struct_pcap_pkthdr
-// buf_ptr should be a *C.u_char
-func NewPacket(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) *Packet {
-	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
-
-	p := &Packet{
-		Time:    time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000),
-		Caplen:  uint32(pkthdr.caplen),
-		Len:     uint32(pkthdr.len),
-		Headers: make([]Hdr, 3),
-		buf:     buf_ptr,
-	}
-	p.decode()
-	return p
+func getPaylen(iphdr *C.struct_ip) uint16 {
+	return uint16(iphdr.ip_len)
 }
 
-// Decode decodes the headers of a Packet.
-func (p *Packet) decode() {
-	ethHdr, buf := NewEthHdr(p.buf)
-	p.Headers[LinkLayer] = ethHdr
+func getProtocol(iphdr *C.struct_ip) uint8 {
+	return uint8(iphdr.ip_p)
+}
 
-	switch ethHdr.EtherType {
-	case C.ETHERTYPE_IP, 0:
-		p.Headers[NetworkLayer], buf = NewIpHdr(buf)
-	case C.ETHERTYPE_IPV6:
-		p.Headers[NetworkLayer], buf = NewIp6Hdr(buf)
-	case C.ETHERTYPE_ARP:
-		//TODO(gavaletz) ARP
-		return
-	default:
-		return
-	}
+func unwrapHeaders(packet TcpPacket, iphdr *C.struct_ip, tcphdr *C.struct_tcphdr) TcpPacket {
+	packet.DstAddr = uint32(iphdr.ip_dst.s_addr)
+	packet.SrcAddr = uint32(iphdr.ip_src.s_addr)
+	packet.AckSeq = uint32(tcphdr.th_ack)
+	packet.Seq = uint32(tcphdr.th_seq)
+	packet.Source = uint16(tcphdr.th_sport)
+	packet.Dest = uint16(tcphdr.th_dport)
 
-	switch p.Headers[NetworkLayer].(InetProtoHdr).Proto() {
-	case C.IPPROTO_TCP:
-		p.Headers[TransportLayer], _ = NewTcpHdr(buf)
-	case C.IPPROTO_UDP:
-		p.Headers[TransportLayer], _ = NewUdpHdr(buf)
-		return
-	case C.IPPROTO_ICMP:
-		//TODO(gavaletz) ICMP
-		return
-	default:
-		return
-	}
-
+	return packet
 }

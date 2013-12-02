@@ -2,17 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!safe,!appengine
+// +build !safe,!appengine
 
 package pkt
 
 /*
 #include "../pcap.h"
-#include <net/ethernet.h>
-#include <netinet/if_ether.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
-
-#include <netinet/ip.h>
+#include <netinet/if_ether.h>
 #include <netinet/tcp.h>
 */
 import "C"
@@ -114,7 +112,7 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	// unwrap ethernet packet
 	var ethhdr = (*C.struct_ether_header)(buf_ptr)
 	var ethtype = uint16(ethhdr.ether_type)
-	// we are assuming little endian arch
+	// FIXME: we are assuming little endian arch
 	ethtype = (ethtype>>8 | ethtype&uint16(0x00ff)<<8)
 
 	if ethtype == 0 {
@@ -129,16 +127,16 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	}
 
 	// unwrap ip packet
-	var iphdr = (*C.struct_iphdr)(buf_ptr)
+	iphdr := getIphdr(buf_ptr)
 	var iphdrlen = *(*byte)(buf_ptr) & 0x0F
 
-	var paylen = uint16(iphdr.tot_len)
-	// we are assuming little endian arch
+	paylen := getPaylen(iphdr)
+	// FIXME: we are assuming little endian arch
 	paylen = (paylen>>8 | paylen&uint16(0x00ff)<<8) - uint16(iphdrlen*4)
 
 	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen*4))
 
-	if uint8(iphdr.protocol) != C.IPPROTO_TCP {
+	if getProtocol(iphdr) != C.IPPROTO_TCP {
 		return packet, fmt.Errorf("unsupported packet")
 	}
 
@@ -146,12 +144,8 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
 	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
 
-	packet.DstAddr = uint32(iphdr.daddr)
-	packet.SrcAddr = uint32(iphdr.saddr)
-	packet.AckSeq = uint32(tcphdr.ack_seq)
-	packet.Seq = uint32(tcphdr.seq)
-	packet.Source = uint16(tcphdr.source)
-	packet.Dest = uint16(tcphdr.dest)
+	packet = unwrapHeaders(packet, iphdr, tcphdr)
+
 	packet.Flags = *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))
 	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
 	packet.IsRequest = false
@@ -161,6 +155,7 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	sh.Len = sh.Cap
 	sh.Data = uintptr(unsafe.Pointer(uintptr(buf_ptr) + uintptr(dataoffset*4)))
 
+	// FIXME: Refactor to create a generalized ntohs/ntohl set of functions.
 	// Network to hosts. Right now we are assuming little endian cpu.
 	packet.Flags = (packet.Flags>>8 | packet.Flags&uint16(0x00ff)<<8) & uint16(0x01FF)
 	packet.Dest = packet.Dest>>8 | packet.Dest&uint16(0x00ff)<<8
