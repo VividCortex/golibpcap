@@ -2,18 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!safe,!appengine
+// +build !safe,!appengine
 
 package pkt
 
 /*
 #include "../pcap.h"
-#include <net/ethernet.h>
-#include <netinet/if_ether.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/if_ether.h>
+#include <netinet/tcp.h>
 */
 import "C"
 import (
+	"fmt"
+	"reflect"
 	"time"
 	"unsafe"
 )
@@ -73,4 +76,91 @@ func (p *Packet) decode() {
 	default:
 		return
 	}
+}
+
+type TcpPacket struct {
+	DstAddr   uint32
+	SrcAddr   uint32
+	AckSeq    uint32
+	Seq       uint32
+	Source    uint16
+	Dest      uint16
+	Flags     uint16
+	Payload   []byte
+	Timestamp time.Time
+	IsRequest bool
+	saved     bool
+}
+
+func (this *TcpPacket) Save() {
+	var dcopy = make([]byte, len(this.Payload))
+	copy(dcopy, this.Payload)
+	this.Payload = dcopy
+	this.saved = true
+}
+
+// NewPacket2 takes a libpcap buffer and extracts only TCP/IPv4 packets into
+// a TcpPacket without creating any new data in the heap. If the recipient of
+// this packet needs to keep a copy of it, it should call func (this *TcpPacket) Save(),
+// so the next packet will make copy the payload into it's own new heap allocation.
+// Else the buffer will be overwritten by the next packet.
+func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, error) {
+	var packet TcpPacket
+
+	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
+
+	// unwrap ethernet packet
+	var ethhdr = (*C.struct_ether_header)(buf_ptr)
+	var ethtype = uint16(ethhdr.ether_type)
+	// FIXME: we are assuming little endian arch
+	ethtype = (ethtype>>8 | ethtype&uint16(0x00ff)<<8)
+
+	if ethtype == 0 {
+		// The "cooked" headers have an extra two bytes.
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
+	} else {
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
+	}
+
+	if ethtype != C.ETHERTYPE_IP && ethtype != 0 {
+		return packet, fmt.Errorf("unsupported packet")
+	}
+
+	// unwrap ip packet
+	iphdr := getIphdr(buf_ptr)
+	var iphdrlen = *(*byte)(buf_ptr) & 0x0F
+
+	paylen := getPaylen(iphdr)
+	// FIXME: we are assuming little endian arch
+	paylen = (paylen>>8 | paylen&uint16(0x00ff)<<8) - uint16(iphdrlen*4)
+
+	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen*4))
+
+	if getProtocol(iphdr) != C.IPPROTO_TCP {
+		return packet, fmt.Errorf("unsupported packet")
+	}
+
+	// unwrap tcp packet
+	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
+	var dataoffset = *(*byte)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12))) >> 4
+
+	packet = unwrapHeaders(packet, iphdr, tcphdr)
+
+	packet.Flags = *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))
+	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
+	packet.IsRequest = false
+
+	sh := (*reflect.SliceHeader)((unsafe.Pointer(&packet.Payload)))
+	sh.Cap = int(paylen - uint16(dataoffset*4))
+	sh.Len = sh.Cap
+	sh.Data = uintptr(unsafe.Pointer(uintptr(buf_ptr) + uintptr(dataoffset*4)))
+
+	// FIXME: Refactor to create a generalized ntohs/ntohl set of functions.
+	// Network to hosts. Right now we are assuming little endian cpu.
+	packet.Flags = (packet.Flags>>8 | packet.Flags&uint16(0x00ff)<<8) & uint16(0x01FF)
+	packet.Dest = packet.Dest>>8 | packet.Dest&uint16(0x00ff)<<8
+	packet.Source = packet.Source>>8 | packet.Source&uint16(0x00ff)<<8
+	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
+	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
+	return packet, nil
 }
