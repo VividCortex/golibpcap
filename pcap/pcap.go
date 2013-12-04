@@ -11,9 +11,10 @@
 package pcap
 
 /*
-#cgo LDFLAGS: -lpcap
+#cgo linux LDFLAGS: -L../pcap -lpcap_linux
+#cgo freebsd LDFLAGS: -L../pcap -lpcap_freebsd
 #include <stdlib.h>
-#include <pcap.h>
+#include "pcap.h"
 #include "libpcap.h"
 */
 import "C"
@@ -309,6 +310,26 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 		return packet, res
 	}
 	return nil, res
+}
+
+// NextEx2 is just like NextEx, but returns only TCP/IPv4 packets. This packet creates
+// no new heap allocations unless the previous packet was "saved" (it's Save() member
+// was called)
+func (p *Pcap) NextEx2() (pkt.TcpPacket, int32) {
+	var pkthdr_ptr *C.struct_pcap_pkthdr
+	var buf_ptr *C.u_char
+	var packet pkt.TcpPacket
+	var err error
+	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
+	if res == 1 {
+		packet, err = pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+		p.pktCnt++
+		if err != nil {
+			return packet, 0
+		}
+		return packet, res
+	}
+	return packet, res
 }
 
 // Getstats returns a filled in Stat struct.

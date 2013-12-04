@@ -1,5 +1,5 @@
-// Copyright 2013 The golibpcap Authors. All rights reserved.                      
-// Use of this source code is governed by a BSD-style                              
+// Copyright 2013 The golibpcap Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // +build !safe,!appengine
@@ -7,8 +7,8 @@
 package pkt
 
 /*
+#include <sys/types.h>
 #include <net/ethernet.h>
-#include <netinet/ether.h>
 #include <netinet/in.h>
 */
 import "C"
@@ -31,9 +31,9 @@ func NewEthHdr(p unsafe.Pointer) (*EthHdr, unsafe.Pointer) {
 	ethHdr := &EthHdr{
 		cptr: (*C.struct_ether_header)(p),
 	}
-	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETH_ALEN))
-	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETH_ALEN))
-	ethHdr.EtherType = uint16(C.ntohs(C.uint16_t(ethHdr.cptr.ether_type)))
+	//	ethHdr.SrcAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_shost), C.ETH_ALEN))
+	//	ethHdr.DstAddr = net.HardwareAddr(C.GoBytes(unsafe.Pointer(&ethHdr.cptr.ether_dhost), C.ETH_ALEN))
+	ethHdr.EtherType = uint16(C.ntohs(C.uint16_t((*C.struct_ether_header)(p).ether_type)))
 
 	// When using the Linux "any" device we have to handle cooked headers.
 	// To determine if you could be in this case you can use pcap_datalink()
