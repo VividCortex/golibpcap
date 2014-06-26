@@ -8,7 +8,7 @@ package pkt
 
 /*
 #include <netinet/ip.h>
-#include <netinet/tcp.h>
+#include <linux/tcp.h>
 */
 import "C"
 import (

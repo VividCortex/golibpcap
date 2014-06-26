@@ -8,7 +8,7 @@ package pkt
 
 /*
 #include <netinet/in.h>
-#include <netinet/tcp.h>
+#include <linux/tcp.h>
 */
 import "C"
 import (
@@ -16,7 +16,7 @@ import (
 	"unsafe"
 )
 
-// The TcpHdr struct is a wrapper for the tcphdr struct in <netinet/tcp.h>.
+// The TcpHdr struct is a wrapper for the tcphdr struct in <linux/tcp.h>.
 type TcpHdr struct {
 	cptr    *C.struct_tcphdr // see <net/tcp.h> struct tcphdr
 	Source  uint16           // source port

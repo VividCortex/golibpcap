@@ -8,7 +8,7 @@ package pkt
 
 /*
 #include <netinet/in.h>
-#include <netinet/udp.h>
+#include <linux/udp.h>
 */
 import "C"
 import (
@@ -16,9 +16,9 @@ import (
 	"unsafe"
 )
 
-// The UdpHdr struct is a wrapper for the udphdr struct in <netinet/udp.h>.
+// The UdpHdr struct is a wrapper for the udphdr struct in <linux/udp.h>.
 type UdpHdr struct {
-	cptr    *C.struct_udphdr // see <netinet/udp.h> struct tcphdr
+	cptr    *C.struct_udphdr // see <linux/udp.h> struct tcphdr
 	Source  uint16           // source port
 	Dest    uint16           // destination port
 	Len     uint16           // datagram length (header + payload) in bytes

@@ -13,7 +13,7 @@ package pkt
 
 /*
 #include <netinet/in.h>
-#include <netinet/tcp.h>
+#include <linux/tcp.h>
 
 // Our test TCP header.
 struct tcphdr h = {};
@@ -32,7 +32,6 @@ struct tcphdr * getTcpHeader() {
   h.psh = 0;
   h.ack = 1;
   h.urg = 0;
-  h.res2 = 0;
   h.window = htons(512);
   h.check = htons(9999);
   h.urg_ptr = htons(777);
