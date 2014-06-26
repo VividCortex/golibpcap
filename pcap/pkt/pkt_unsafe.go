@@ -11,7 +11,7 @@ package pkt
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <netinet/tcp.h>
+#include <linux/tcp.h>
 */
 import "C"
 import (
