@@ -1,3 +1,5 @@
+// These wrappers are necessary for Darwin, where these functions are
+// defined as preprocessor macros which don't work well with cgo.
 #include <arpa/inet.h>
 #include "wrappers.h"
 
