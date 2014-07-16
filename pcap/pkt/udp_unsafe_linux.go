@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!safe,!appengine
-
 package pkt
 
 /*
 #include <netinet/in.h>
 #include <netinet/udp.h>
+#include "wrappers.h"
 */
 import "C"
 import (
@@ -31,10 +30,10 @@ func NewUdpHdr(p unsafe.Pointer) (*UdpHdr, unsafe.Pointer) {
 	udpHead := &UdpHdr{
 		cptr: (*C.struct_udphdr)(p),
 	}
-	udpHead.Source = uint16(C.ntohs(C.uint16_t(udpHead.cptr.source)))
-	udpHead.Dest = uint16(C.ntohs(C.uint16_t(udpHead.cptr.dest)))
-	udpHead.Len = uint16(C.ntohs(C.uint16_t(udpHead.cptr.len)))
-	udpHead.Check = uint16(C.ntohs(C.uint16_t(udpHead.cptr.check)))
+	udpHead.Source = uint16(C._ntohs(C.uint16_t(udpHead.cptr.source)))
+	udpHead.Dest = uint16(C._ntohs(C.uint16_t(udpHead.cptr.dest)))
+	udpHead.Len = uint16(C._ntohs(C.uint16_t(udpHead.cptr.len)))
+	udpHead.Check = uint16(C._ntohs(C.uint16_t(udpHead.cptr.check)))
 	udpHead.payload = unsafe.Pointer(uintptr(p) + 8)
 	return udpHead, udpHead.payload
 }
