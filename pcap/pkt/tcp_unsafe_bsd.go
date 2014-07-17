@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build darwin freebsd
+
 package pkt
 
 /*
@@ -11,7 +13,6 @@ package pkt
 */
 import "C"
 import (
-	"reflect"
 	"unsafe"
 )
 
@@ -52,20 +53,4 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 	tcpHead.UrgPtr = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.th_urp)))
 	tcpHead.payload = unsafe.Pointer(uintptr(p) + uintptr(tcpHead.Doff*4))
 	return tcpHead, tcpHead.payload
-}
-
-// GetPayloadBytes returns the bytes from the packet's payload.  This is a Go
-// slice backed by the C bytes.  The result is that the Go slice uses very
-// little extra memory.
-func (h *TcpHdr) GetPayloadBytes(pl uint16) []byte {
-	l := int(h.PayloadLen(pl))
-	if l <= 0 {
-		return []byte{}
-	}
-	var b []byte
-	sh := (*reflect.SliceHeader)((unsafe.Pointer(&b)))
-	sh.Cap = l
-	sh.Len = l
-	sh.Data = uintptr(h.payload)
-	return b
 }
