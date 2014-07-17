@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build darwin freebsd
+
 package pkt
 
 /*
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include "wrappers.h"
 */
 import "C"
 import (
@@ -42,7 +45,7 @@ func NewIpHdr(p unsafe.Pointer) (*IpHdr, unsafe.Pointer) {
 	iphdr.SrcAddr = net.IP(C.GoBytes(unsafe.Pointer(&iphdr.cptr.ip_src.s_addr), 4))
 	iphdr.DstAddr = net.IP(C.GoBytes(unsafe.Pointer(&iphdr.cptr.ip_dst.s_addr), 4))
 	iphdr.Protocol = uint8(iphdr.cptr.ip_p)
-	iphdr.TotLen = uint16(C.ntohs(C.uint16_t(iphdr.cptr.ip_len)))
+	iphdr.TotLen = uint16(C._ntohs(C.uint16_t(iphdr.cptr.ip_len)))
 	iphdr.PayloadLen = iphdr.TotLen - uint16(iphdr.Ihl*4)
 	iphdr.payload = unsafe.Pointer(uintptr(p) + uintptr(iphdr.Ihl*4))
 	return iphdr, iphdr.payload
@@ -50,5 +53,5 @@ func NewIpHdr(p unsafe.Pointer) (*IpHdr, unsafe.Pointer) {
 
 // Id returns the identification of the IP flow.
 func (h *IpHdr) Id() uint16 {
-	return uint16(C.ntohs(C.uint16_t(h.cptr.ip_id)))
+	return uint16(C._ntohs(C.uint16_t(h.cptr.ip_id)))
 }

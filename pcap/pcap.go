@@ -13,6 +13,7 @@ package pcap
 /*
 #cgo linux LDFLAGS: -L../pcap -lpcap_linux
 #cgo freebsd LDFLAGS: -L../pcap -lpcap_freebsd
+#cgo darwin LDFLAGS: -L../pcap -lpcap_darwin
 #include <stdlib.h>
 #include "pcap.h"
 #include "libpcap.h"

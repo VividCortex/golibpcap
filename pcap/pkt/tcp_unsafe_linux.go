@@ -7,10 +7,10 @@ package pkt
 /*
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include "wrappers.h"
 */
 import "C"
 import (
-	"reflect"
 	"unsafe"
 )
 
@@ -37,34 +37,18 @@ func NewTcpHdr(p unsafe.Pointer) (*TcpHdr, unsafe.Pointer) {
 		// we index 12 octets in and then shift out the unneeded bits.
 		Doff: *(*byte)(unsafe.Pointer(uintptr(p) + uintptr(12))) >> 4,
 	}
-	tcpHead.Source = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.th_sport)))
-	tcpHead.Dest = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.th_dport)))
-	tcpHead.Seq = uint32(C.ntohl(C.uint32_t(tcpHead.cptr.th_seq)))
-	tcpHead.AckSeq = uint32(C.ntohl(C.uint32_t(tcpHead.cptr.th_ack)))
+	tcpHead.Source = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.source)))
+	tcpHead.Dest = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.dest)))
+	tcpHead.Seq = uint32(C._ntohl(C.uint32_t(tcpHead.cptr.seq)))
+	tcpHead.AckSeq = uint32(C._ntohl(C.uint32_t(tcpHead.cptr.ack_seq)))
 	// A this time (and there are no plans to support it) cgo does not
 	// provide access to bit fields in a struct so this is what we are stuck
 	// with.  We index 12 octets in and then use a bit mask.
-	tcpHead.Flags = uint16(C.ntohs(C.uint16_t(
+	tcpHead.Flags = uint16(C._ntohs(C.uint16_t(
 		*(*uint16)(unsafe.Pointer(uintptr(p) + uintptr(12)))))) & uint16(0x01FF)
-	tcpHead.Window = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.th_win)))
-	tcpHead.Check = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.th_sum)))
-	tcpHead.UrgPtr = uint16(C.ntohs(C.uint16_t(tcpHead.cptr.th_urp)))
+	tcpHead.Window = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.window)))
+	tcpHead.Check = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.check)))
+	tcpHead.UrgPtr = uint16(C._ntohs(C.uint16_t(tcpHead.cptr.urg_ptr)))
 	tcpHead.payload = unsafe.Pointer(uintptr(p) + uintptr(tcpHead.Doff*4))
 	return tcpHead, tcpHead.payload
-}
-
-// GetPayloadBytes returns the bytes from the packet's payload.  This is a Go
-// slice backed by the C bytes.  The result is that the Go slice uses very
-// little extra memory.
-func (h *TcpHdr) GetPayloadBytes(pl uint16) []byte {
-	l := int(h.PayloadLen(pl))
-	if l <= 0 {
-		return []byte{}
-	}
-	var b []byte
-	sh := (*reflect.SliceHeader)((unsafe.Pointer(&b)))
-	sh.Cap = l
-	sh.Len = l
-	sh.Data = uintptr(h.payload)
-	return b
 }
