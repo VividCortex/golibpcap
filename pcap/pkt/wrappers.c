@@ -1,5 +1,6 @@
-// These wrappers are necessary for Darwin, where these functions are
-// defined as preprocessor macros which don't work well with cgo.
+// These wrappers are necessary for Darwin and Ubuntu 14.04,
+// where the implementations of certain things don't work
+// well with cgo.
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
