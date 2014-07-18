@@ -29,30 +29,46 @@ uint32_t _tcphdr_ack_seq(struct tcphdr* h) {
 	return h->ack_seq;
 }
 
-uint16_t _tcphdr_window(struct tcphdr* h) {
-	return h->window;
+uint16_t _tcphdr_source_ntohs(struct tcphdr* h) {
+	return ntohs(h->source);
 }
 
-uint16_t _tcphdr_check(struct tcphdr* h) {
-	return h->check;
+uint16_t _tcphdr_dest_ntohs(struct tcphdr* h) {
+	return ntohs(h->dest);
 }
 
-uint16_t _tcphdr_urg_ptr(struct tcphdr* h) {
-	return h->urg_ptr;
+uint32_t _tcphdr_seq_ntohl(struct tcphdr* h) {
+	return ntohl(h->seq);
 }
 
-uint16_t _udphdr_source(struct udphdr* h) {
-	return h->source;
+uint32_t _tcphdr_ack_seq_ntohl(struct tcphdr* h) {
+	return ntohl(h->ack_seq);
 }
 
-uint16_t _udphdr_dest(struct udphdr* h) {
-	return h->dest;
+uint16_t _tcphdr_window_ntohs(struct tcphdr* h) {
+	return ntohs(h->window);
 }
 
-uint16_t _udphdr_check(struct udphdr* h) {
-	return h->check;
+uint16_t _tcphdr_check_ntohs(struct tcphdr* h) {
+	return ntohs(h->check);
 }
 
-uint16_t _udphdr_len(struct udphdr* h) {
-	return h->len;
+uint16_t _tcphdr_urg_ptr_ntohs(struct tcphdr* h) {
+	return ntohs(h->urg_ptr);
+}
+
+uint16_t _udphdr_source_ntohs(struct udphdr* h) {
+	return ntohs(h->source);
+}
+
+uint16_t _udphdr_dest_ntohs(struct udphdr* h) {
+	return ntohs(h->dest);
+}
+
+uint16_t _udphdr_check_ntohs(struct udphdr* h) {
+	return ntohs(h->check);
+}
+
+uint16_t _udphdr_len_ntohs(struct udphdr* h) {
+	return ntohs(h->len);
 }
