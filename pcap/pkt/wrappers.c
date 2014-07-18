@@ -2,6 +2,7 @@
 // defined as preprocessor macros which don't work well with cgo.
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include "wrappers.h"
 
 uint16_t _ntohs(uint16_t n) {
@@ -38,4 +39,20 @@ uint16_t _tcphdr_check(struct tcphdr* h) {
 
 uint16_t _tcphdr_urg_ptr(struct tcphdr* h) {
 	return h->urg_ptr;
+}
+
+uint16_t _udphdr_source(struct udphdr* h) {
+	return h->source;
+}
+
+uint16_t _udphdr_dest(struct udphdr* h) {
+	return h->dest;
+}
+
+uint16_t _udphdr_check(struct udphdr* h) {
+	return h->check;
+}
+
+uint16_t _udphdr_len(struct udphdr* h) {
+	return h->len;
 }
