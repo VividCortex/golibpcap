@@ -14,6 +14,8 @@ uint32_t _ntohl(uint32_t n) {
 	return ntohl(n);
 }
 
+#ifdef __linux
+
 uint16_t _tcphdr_source(struct tcphdr* h) {
 	return h->source;
 }
@@ -73,3 +75,5 @@ uint16_t _udphdr_check_ntohs(struct udphdr* h) {
 uint16_t _udphdr_len_ntohs(struct udphdr* h) {
 	return ntohs(h->len);
 }
+
+#endif
