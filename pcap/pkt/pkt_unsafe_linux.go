@@ -26,13 +26,11 @@ func getProtocol(iphdr *C.struct_iphdr) uint8 {
 	return uint8(iphdr.protocol)
 }
 
-func unwrapHeaders(packet TcpPacket, iphdr *C.struct_iphdr, tcphdr *C.struct_tcphdr) TcpPacket {
+func unwrapHeaders(packet *TcpPacket, iphdr *C.struct_iphdr, tcphdr *C.struct_tcphdr) {
 	packet.DstAddr = uint32(iphdr.daddr)
 	packet.SrcAddr = uint32(iphdr.saddr)
-	packet.AckSeq = uint32(C._tcphdr_ack_seq(tcphdr))
-	packet.Seq = uint32(C._tcphdr_seq(tcphdr))
-	packet.Source = uint16(C._tcphdr_source(tcphdr))
-	packet.Dest = uint16(C._tcphdr_dest(tcphdr))
-
-	return packet
+	packet.AckSeq = uint32(tcphdr.ack_seq)
+	packet.Seq = uint32(tcphdr.seq)
+	packet.Source = uint16(tcphdr.source)
+	packet.Dest = uint16(tcphdr.dest)
 }
