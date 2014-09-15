@@ -12,6 +12,18 @@ package pkt
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netinet/tcp.h>
+
+// generic little-endian tcphdr
+struct gen_tcphdr {
+    u_int16_t source;
+    u_int16_t dest;
+    u_int32_t seq;
+    u_int32_t ack_seq;
+    u_int16_t flags;
+    u_int16_t window;
+    u_int16_t check;
+    u_int16_t urg_ptr;
+};
 */
 import "C"
 import (
@@ -136,16 +148,19 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen))
 
 	// unwrap tcp packet
-	var tcphdr = (*C.struct_tcphdr)(buf_ptr)
+	var tcphdr = (*C.struct_gen_tcphdr)(buf_ptr)
 
-	var flags = *(*uint16)(unsafe.Pointer(uintptr(buf_ptr) + uintptr(12)))
-
-	var dataoffset = (flags >> 2) & 0x3C
-
-	unwrapHeaders(&packet, iphdr, tcphdr)
-
+	packet.DstAddr = uint32(iphdr.daddr)
+	packet.SrcAddr = uint32(iphdr.saddr)
+	packet.AckSeq = uint32(tcphdr.ack_seq)
+	packet.Seq = uint32(tcphdr.seq)
+	packet.Source = uint16(tcphdr.source)
+	packet.Dest = uint16(tcphdr.dest)
 	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
 	packet.IsRequest = false
+
+	var flags = uint16(tcphdr.flags)
+	var dataoffset = (flags >> 2) & 0x3C
 
 	paylen := getPaylen(iphdr)
 	paylen = (paylen>>8 | paylen<<8) - iphdrlen - dataoffset // FIXME: we are assuming little endian arch
