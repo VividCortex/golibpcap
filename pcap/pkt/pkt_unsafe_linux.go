@@ -25,12 +25,3 @@ func getPaylen(iphdr *C.struct_iphdr) uint16 {
 func getProtocol(iphdr *C.struct_iphdr) uint8 {
 	return uint8(iphdr.protocol)
 }
-
-func unwrapHeaders(packet *TcpPacket, iphdr *C.struct_iphdr, tcphdr *C.struct_tcphdr) {
-	packet.DstAddr = uint32(iphdr.daddr)
-	packet.SrcAddr = uint32(iphdr.saddr)
-	packet.AckSeq = uint32(tcphdr.ack_seq)
-	packet.Seq = uint32(tcphdr.seq)
-	packet.Source = uint16(tcphdr.source)
-	packet.Dest = uint16(tcphdr.dest)
-}
