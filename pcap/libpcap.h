@@ -7,12 +7,11 @@
 #include "pcap.h"
 
 // Defined in pcap.go
-extern void goCallBack(u_char *, struct pcap_pkthdr *, u_char *);
-
-// Calls the exported goCallBack function.
-void callback(u_char *, const struct pcap_pkthdr *, const u_char *);
+extern void goCallbackChan(u_char *, struct pcap_pkthdr *, u_char *);
+extern void goCallbackLoop(u_char *, struct pcap_pkthdr *, u_char *);
 
 typedef void(*pt2cb)(u_char *, const struct pcap_pkthdr *, const u_char *);
 
-// Gets us the C function pointer that we need.
-pt2cb getCallback();
+// Gets us the C function pointers that we need.
+pt2cb getCallbackChan();
+pt2cb getCallbackLoop();

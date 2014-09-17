@@ -8,6 +8,8 @@ package pkt
 
 /*
 #include "../pcap.h"
+#include "../pcap/bpf.h"
+#include "../pcap/sll.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
@@ -27,6 +29,7 @@ struct gen_tcphdr {
 */
 import "C"
 import (
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"time"
@@ -111,6 +114,23 @@ func (this *TcpPacket) Save() {
 	this.saved = true
 }
 
+// debugging aid
+func dumpBuf(pbuf unsafe.Pointer, maxlen int) string {
+	sbuf := make([]byte, 1)
+	var plA, plH string
+	for i := 0; i < maxlen; i++ {
+		c := *(*byte)(unsafe.Pointer(uintptr(pbuf) + uintptr(i)))
+		if c >= 32 && c <= 126 {
+			plA += string(c)
+		} else {
+			plA += "#"
+		}
+		sbuf[0] = c
+		plH += hex.EncodeToString(sbuf[:])
+	}
+	return "[" + plA + "] [" + plH + "]"
+}
+
 // FIXME: we are assuming little endian arch
 const ETHERTYPE_IP = C.ETHERTYPE_IP>>8 | C.ETHERTYPE_IP&0xFF<<8
 
@@ -119,28 +139,40 @@ const ETHERTYPE_IP = C.ETHERTYPE_IP>>8 | C.ETHERTYPE_IP&0xFF<<8
 // this packet needs to keep a copy of it, it should call func (this *TcpPacket) Save(),
 // so the next packet will make copy the payload into it's own new heap allocation.
 // Else the buffer will be overwritten by the next packet.
-func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, error) {
+func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType int32) (*TcpPacket, error) {
 	var packet TcpPacket
 
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
-	// unwrap ethernet packet
-	var ethhdr = (*C.struct_ether_header)(buf_ptr)
+	if pkthdr.caplen != pkthdr.len {
+		return nil, fmt.Errorf("incomplete packet")
+	}
 
-	switch ethhdr.ether_type {
-	case 0: // The "cooked" headers have an extra two bytes.
-		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
-	case ETHERTYPE_IP:
-		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
-	default:
-		return packet, fmt.Errorf("unsupported packet")
+	if datalinkType == C.DLT_LINUX_SLL {
+		// unwrap cooked packet
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.SLL_HDR_LEN))
+	} else if datalinkType == C.DLT_EN10MB {
+		// unwrap ethernet packet
+		var ethhdr = (*C.struct_ether_header)(buf_ptr)
+
+		switch ethhdr.ether_type {
+		case 0: // The "cooked" headers have an extra two bytes.
+			buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
+		case ETHERTYPE_IP:
+			buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
+		default:
+			return nil, fmt.Errorf("unsupported packet type=%d", ethhdr.ether_type)
+		}
+	} else {
+		//log.Println("Unsupported packet format", datalinkType, "pkt", dumpBuf(buf_ptr, 32))
+		return nil, fmt.Errorf("unsupported packet format %d", datalinkType)
 	}
 
 	// unwrap ip packet
 	iphdr := getIphdr(buf_ptr)
 
 	if getProtocol(iphdr) != C.IPPROTO_TCP {
-		return packet, fmt.Errorf("unsupported packet")
+		return nil, fmt.Errorf("unsupported packet proto=%d", getProtocol(iphdr))
 	}
 
 	var iphdrlen = uint16((*(*byte)(buf_ptr) & 0x0F) * 4)
@@ -157,7 +189,6 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	packet.Source = uint16(tcphdr.source)
 	packet.Dest = uint16(tcphdr.dest)
 	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
-	packet.IsRequest = false
 
 	var flags = uint16(tcphdr.flags)
 	var dataoffset = (flags >> 2) & 0x3C
@@ -177,5 +208,5 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer) (TcpPacket, e
 	packet.Source = packet.Source>>8 | packet.Source<<8
 	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
 	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
-	return packet, nil
+	return &packet, nil
 }
