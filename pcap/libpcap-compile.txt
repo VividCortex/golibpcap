@@ -1,0 +1,8 @@
+Linux:
+
+libpcap-1.6.2
+
+Linux 10.0.2.15 3.10.0-123.6.3.el7.x86_64 #1 SMP Wed Aug 6 21:12:36 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+gcc (GCC) 4.8.2 20140120 (Red Hat 4.8.2-16)
+
+CFLAGS="-m64 -mtune=generic -O2 -fno-pic -fomit-frame-pointer -fno-strict-aliasing" ./configure --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-protochain --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
