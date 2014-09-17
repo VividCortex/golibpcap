@@ -345,16 +345,16 @@ func (p *Pcap) NextEx2() (pkt.TcpPacket, int32) {
 	var err error
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
 	if res == 1 {
+		p.pktCnt++
 		if p.datalinkType == 0 {
 			p.datalinkType = p.Datalink()
 		}
-		packet, err = pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType)
-		p.pktCnt++
-		if err != nil {
-			res = 0
+		if packet, err = pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType); err == nil {
+			return *packet, res
 		}
+		res = 0
 	}
-	return *packet, res
+	return pkt.TcpPacket{}, res
 }
 
 // Getstats returns a filled in Stat struct.
