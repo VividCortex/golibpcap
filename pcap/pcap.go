@@ -44,14 +44,28 @@ var (
 	OptimizeFilters = 1    // Tells the bpf compiler to optimize filters.
 )
 
-//export goCallBack
-func goCallBack(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
+//export goCallbackChan
+func goCallbackChan(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
 	p := (*Pcap)(unsafe.Pointer(user))
 	p.m.Lock()
 	packet := pkt.NewPacket(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
 	p.m.Unlock()
 	p.Pchan <- packet
 	p.pktCnt++
+}
+
+//export goCallbackLoop
+func goCallbackLoop(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
+	p := (*Pcap)(unsafe.Pointer(user))
+	p.pktCnt++
+	if p.datalinkType == 0 {
+		p.datalinkType = p.Datalink()
+	}
+	if packet, err := pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType); err == nil {
+		if p.loopCallback(packet) {
+			p.BreakLoop()
+		}
+	}
 }
 
 // LibVersion returns information about the version of libpcap being used.
@@ -67,16 +81,18 @@ func Statustostr(errnum int32) string {
 
 // Pcap is the wrapper for the pcap_t struct in <pcap.h>.
 type Pcap struct {
-	FileName string           // Used for pcap_open_offline
-	Device   string           // Used for pcap_open_live
-	Snaplen  int32            // Specifies the maximum number of bytes to capture
-	Promisc  int32            // 0->false, 1->true
-	Timeout  int32            // ms
-	Filters  []string         // track filters applied to the capture
-	Pchan    chan *pkt.Packet // Channel for passing Packet pointers
-	cptr     *C.pcap_t        // C Pointer to pcap_t
-	pktCnt   uint32           // the number of packets captured
-	m        *sync.Mutex      // Mutex to protect the packet memory for decode
+	FileName     string                    // Used for pcap_open_offline
+	Device       string                    // Used for pcap_open_live
+	Snaplen      int32                     // Specifies the maximum number of bytes to capture
+	Promisc      int32                     // 0->false, 1->true
+	Timeout      int32                     // ms
+	Filters      []string                  // track filters applied to the capture
+	Pchan        chan *pkt.Packet          // Channel for passing Packet pointers
+	loopCallback func(*pkt.TcpPacket) bool // Callback for LoopWithCallback(), ret true to quit
+	datalinkType int32                     // type of packets libpcap will send us
+	cptr         *C.pcap_t                 // C Pointer to pcap_t
+	pktCnt       uint32                    // the number of packets captured
+	m            *sync.Mutex               // Mutex to protect the packet memory for decode
 }
 
 // OpenOffline returns a *Pcap and opens it to read pcap packets from a save file.
@@ -252,8 +268,14 @@ func (p *Pcap) Activate() error {
 
 // Loop keeps reading packets until cnt packets are processed or an error occurs.
 func (p *Pcap) Loop(cnt int) {
-	C.pcap_loop(p.cptr, C.int(cnt), C.getCallback(), (*C.u_char)(unsafe.Pointer(p)))
+	C.pcap_loop(p.cptr, C.int(cnt), C.getCallbackChan(), (*C.u_char)(unsafe.Pointer(p)))
 	p.Pchan <- nil
+}
+
+// Callback version of Loop().  CB signals to quit returning true.
+func (p *Pcap) LoopWithCallback(cnt int, callback func(*pkt.TcpPacket) bool) {
+	p.loopCallback = callback
+	C.pcap_loop(p.cptr, C.int(cnt), C.getCallbackLoop(), (*C.u_char)(unsafe.Pointer(p)))
 }
 
 // Listen will accumulate packets until it is stopped by a nil packet pointer.
@@ -319,18 +341,20 @@ func (p *Pcap) NextEx() (*pkt.Packet, int32) {
 func (p *Pcap) NextEx2() (pkt.TcpPacket, int32) {
 	var pkthdr_ptr *C.struct_pcap_pkthdr
 	var buf_ptr *C.u_char
-	var packet pkt.TcpPacket
+	var packet *pkt.TcpPacket
 	var err error
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
 	if res == 1 {
-		packet, err = pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr))
+		if p.datalinkType == 0 {
+			p.datalinkType = p.Datalink()
+		}
+		packet, err = pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType)
 		p.pktCnt++
 		if err != nil {
-			return packet, 0
+			res = 0
 		}
-		return packet, res
 	}
-	return packet, res
+	return *packet, res
 }
 
 // Getstats returns a filled in Stat struct.

@@ -5,13 +5,12 @@
 // These are definitions that pcap.go needs.
 #include "libpcap.h"
 
-// Calls the exported goCallBack function.
-void callback(u_char *args, const struct pcap_pkthdr *header,
-    const u_char *packet) {
-  goCallBack(args, (struct pcap_pkthdr *)header, (u_char *)packet);
+// Gets us the C function pointers that we need.
+
+pt2cb getCallbackChan() {
+  return (pt2cb)goCallbackChan;
 }
 
-// Gets us the C function pointer that we need.
-pt2cb getCallback(){
-  return &callback;
+pt2cb getCallbackLoop() {
+  return (pt2cb)goCallbackLoop;
 }
