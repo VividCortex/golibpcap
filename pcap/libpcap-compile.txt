@@ -1,8 +1,16 @@
-Linux:
-
 libpcap-1.6.2
 
-Linux 10.0.2.15 3.10.0-123.6.3.el7.x86_64 #1 SMP Wed Aug 6 21:12:36 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
-gcc (GCC) 4.8.2 20140120 (Red Hat 4.8.2-16)
+### we won't capture USB, so set a lower MAXIMUM_SNAPLEN
+sed --in-place 's/define[[:space:]]\+MAXIMUM_SNAPLEN[[:space:]]\+[[:digit:]]\+/define MAXIMUM_SNAPLEN 131072/' pcap-int.h
 
-CFLAGS="-m64 -mtune=generic -O2 -fno-pic -fomit-frame-pointer -fno-strict-aliasing" ./configure --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-protochain --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
+########################################
+
+Linux xu 3.16.0-10-generic #15-Ubuntu SMP Thu Aug 21 16:26:44 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+gcc (Ubuntu 4.9.1-9ubuntu1) 4.9.1
+
+### TPACKET3 has better performance at high packet rate, but avoiding a Linux bug costs a lot of unneded context switches when there aren't so many packets
+sed --in-place 's/define HAVE_TPACKET3/undef HAVE_TPACKET3/' pcap-linux.c
+
+CFLAGS="-m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-protochain --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
+
+########################################
