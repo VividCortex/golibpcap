@@ -108,10 +108,12 @@ type TcpPacket struct {
 }
 
 func (this *TcpPacket) Save() {
-	var dcopy = make([]byte, len(this.Payload))
-	copy(dcopy, this.Payload)
-	this.Payload = dcopy
-	this.saved = true
+	if !this.saved {
+		var dcopy = make([]byte, len(this.Payload))
+		copy(dcopy, this.Payload)
+		this.Payload = dcopy
+		this.saved = true
+	}
 }
 
 // debugging aid
