@@ -32,7 +32,17 @@ FreeBSD  10.1-RELEASE FreeBSD 10.1-RELEASE #0 r274401: Tue Nov 11 21:02:49 UTC 2
 gcc (FreeBSD Ports Collection) 4.9.3 20141126 (prerelease)
 
 
-### we won't capture USB, so set a lower MAXIMUM_SNAPLEN
-sed --in-place 's/define[[:space:]]\+MAXIMUM_SNAPLEN[[:space:]]\+[[:digit:]]\+/define MAXIMUM_SNAPLEN 131072/' pcap-int.h
+### we won't capture USB, set MAXIMUM_SNAPLEN=131072 in pcap-int.h
 
 CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -D__NO_TLS -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure CC="gcc" --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-protochain --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf
+
+==============================================================================
+========== OSX
+==============================================================================
+
+uname -a
+Darwin 192.168.1.42 13.4.0 Darwin Kernel Version 13.4.0: Sun Aug 17 19:50:11 PDT 2014; root:xnu-2422.115.4~1/RELEASE_X86_64 x86_64
+
+### we won't capture USB, set MAXIMUM_SNAPLEN=131072 in pcap-int.h
+
+CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -D__NO_TLS -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -fno-pic -fomit-frame-pointer -fstrict-aliasing -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure CC="gcc" --disable-protochain --disable-optimizer-dbg --disable-yydebug --disable-universal --disable-shared --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf
