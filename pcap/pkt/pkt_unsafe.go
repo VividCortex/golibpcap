@@ -118,23 +118,23 @@ type TcpPacket struct {
 	Payload   []byte
 	Timestamp time.Time
 	IsRequest bool
-	saved     bool
+	Saved     bool
 }
 
 func (this *TcpPacket) Save() {
-	if !this.saved {
+	if !this.Saved {
 		var dcopy = make([]byte, len(this.Payload))
 		copy(dcopy, this.Payload)
 		this.Payload = dcopy
-		this.saved = true
+		this.Saved = true
 	}
 }
 
 func (this *TcpPacket) Clone() *TcpPacket {
 	dupe := *this
-	if !this.saved {
+	if !this.Saved {
 		dupe.Payload = append([]byte{}, this.Payload...)
-		dupe.saved = true
+		dupe.Saved = true
 	}
 	return &dupe
 }
