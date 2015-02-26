@@ -68,6 +68,20 @@ func goCallbackLoop(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C
 	}
 }
 
+//export goCallbackLoopAllocless
+func goCallbackLoopAllocless(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
+	p := (*Pcap)(unsafe.Pointer(user))
+	p.pktCnt++
+	if p.datalinkType == 0 {
+		p.datalinkType = p.Datalink()
+	}
+	if pkt.NewPacketAllocless(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType, &p.Packet) {
+		if p.loopCallback(&p.Packet) {
+			p.BreakLoop()
+		}
+	}
+}
+
 // LibVersion returns information about the version of libpcap being used.
 // Note that it contains more information than just a version number.
 func LibVersion() string {
@@ -91,6 +105,7 @@ type Pcap struct {
 	loopCallback func(*pkt.TcpPacket) bool // Callback for LoopWithCallback(), ret true to quit
 	datalinkType int32                     // type of packets libpcap will send us
 	cptr         *C.pcap_t                 // C Pointer to pcap_t
+	Packet       pkt.TcpPacket             // used by alloc-less version of loop
 	pktCnt       uint32                    // the number of packets captured
 	m            *sync.Mutex               // Mutex to protect the packet memory for decode
 }
@@ -273,9 +288,17 @@ func (p *Pcap) Loop(cnt int) {
 }
 
 // Callback version of Loop().  CB signals to quit returning true.
+// CB may keep packet if it calls Save().
 func (p *Pcap) LoopWithCallback(cnt int, callback func(*pkt.TcpPacket) bool) {
 	p.loopCallback = callback
 	C.pcap_loop(p.cptr, C.int(cnt), C.getCallbackLoop(), (*C.u_char)(unsafe.Pointer(p)))
+}
+
+// Callback+allocless version of Loop().  CB signals to quit returning true.
+// CB must not keep a ref to packet.  It can use Clone() to get its own copy.
+func (p *Pcap) LoopWithCallbackAllocless(cnt int, callback func(*pkt.TcpPacket) bool) {
+	p.loopCallback = callback
+	C.pcap_loop(p.cptr, C.int(cnt), C.getCallbackLoopAllocless(), (*C.u_char)(unsafe.Pointer(p)))
 }
 
 // Listen will accumulate packets until it is stopped by a nil packet pointer.
