@@ -130,6 +130,15 @@ func (this *TcpPacket) Save() {
 	}
 }
 
+func (this *TcpPacket) Clone() *TcpPacket {
+	dupe := *this
+	if !this.saved {
+		dupe.Payload = append([]byte{}, this.Payload...)
+		dupe.saved = true
+	}
+	return &dupe
+}
+
 // debugging aid
 func dumpBuf(pbuf unsafe.Pointer, maxlen int) string {
 	sbuf := make([]byte, 1)
@@ -223,4 +232,69 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType 
 	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
 	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
 	return &packet, nil
+}
+
+// alloc-less version of NewPacket2.  Ret false if error.
+func NewPacketAllocless(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType int32, packet *TcpPacket) bool {
+	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
+
+	if pkthdr.caplen != pkthdr.len {
+		return false // Errorf("incomplete packet")
+	}
+
+	if datalinkType == C.DLT_LINUX_SLL {
+		// unwrap cooked packet
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.SLL_HDR_LEN))
+	} else if datalinkType == C.DLT_EN10MB {
+		// unwrap ethernet packet
+
+		switch (*C.struct_ether_header)(buf_ptr).ether_type {
+		case 0: // The "cooked" headers have an extra two bytes.
+			buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN) + uintptr(2))
+		case ETHERTYPE_IP:
+			buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
+		default:
+			return false // Errorf("unsupported packet type=%d", ethhdr.ether_type)
+		}
+	} else {
+		return false // Errorf("unsupported packet format %d", datalinkType)
+	}
+
+	// unwrap ip packet
+	var iphdr = (*C.struct_gen_iphdr)(buf_ptr)
+
+	if iphdr.protocol != C.IPPROTO_TCP {
+		return false // Errorf("unsupported packet proto=%d", iphdr.protocol)
+	}
+
+	iphdrlen := uint16(iphdr.misc&0x0F) * 4
+
+	buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(iphdrlen))
+
+	// unwrap tcp packet
+	var tcphdr = (*C.struct_gen_tcphdr)(buf_ptr)
+
+	packet.DstAddr = uint32(iphdr.dst_addr)
+	packet.SrcAddr = uint32(iphdr.src_addr)
+	packet.AckSeq = uint32(tcphdr.ack_seq)
+	packet.Seq = uint32(tcphdr.seq)
+	packet.Source = uint16(tcphdr.source)
+	packet.Dest = uint16(tcphdr.dest)
+	packet.Timestamp = time.Unix(int64(pkthdr.ts.tv_sec), int64(pkthdr.ts.tv_usec)*1000)
+
+	var flags = uint16(tcphdr.flags)
+	dataoffset := uint16(flags>>2) & 0x3C
+
+	paylen := uint16(iphdr.len)
+	paylen = (paylen>>8 | paylen<<8) - iphdrlen - dataoffset
+
+	*((*reflect.SliceHeader)(unsafe.Pointer(&packet.Payload))) = reflect.SliceHeader{Data: uintptr(unsafe.Pointer(uintptr(buf_ptr) + uintptr(dataoffset))), Len: int(paylen), Cap: int(paylen)}
+
+	packet.Flags = (flags>>8 | flags<<8) & uint16(0x01FF)
+	packet.Dest = packet.Dest>>8 | packet.Dest<<8
+	packet.Source = packet.Source>>8 | packet.Source<<8
+	packet.Seq = packet.Seq>>24 | packet.Seq&uint32(0x00ff0000)>>8 | packet.Seq&uint32(0x0000ff00)<<8 | packet.Seq<<24
+	packet.AckSeq = packet.AckSeq>>24 | packet.AckSeq&uint32(0x00ff0000)>>8 | packet.AckSeq&uint32(0x0000ff00)<<8 | packet.AckSeq<<24
+
+	return true
 }

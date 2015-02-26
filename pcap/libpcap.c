@@ -14,3 +14,7 @@ pt2cb getCallbackChan() {
 pt2cb getCallbackLoop() {
   return (pt2cb)goCallbackLoop;
 }
+
+pt2cb getCallbackLoopAllocless() {
+  return (pt2cb)goCallbackLoopAllocless;
+}
