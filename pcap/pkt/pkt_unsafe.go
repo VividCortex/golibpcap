@@ -15,7 +15,7 @@ package pkt
 #include <netinet/if_ether.h>
 #include <netinet/tcp.h>
 
-// linux cookied header
+// linux cooked header
 struct gen_sll {
 	u_int16_t pkt_type;
 	u_int16_t addr_type;
