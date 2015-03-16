@@ -153,6 +153,10 @@ type TcpPacket struct {
 	Saved     bool
 }
 
+func (this *TcpPacket) IsIPv4() bool {
+	return this.DstAddr1 == 0 && this.DstAddr2 == 0 && this.DstAddr3 == 0
+}
+
 func (this *TcpPacket) Save() {
 	if !this.Saved {
 		var dcopy = make([]byte, len(this.Payload))
@@ -194,11 +198,12 @@ const ETHERTYPE_IPV6 = C.ETHERTYPE_IPV6>>8 | C.ETHERTYPE_IPV6&0xFF<<8
 const LINUX_SLL_IPV6 = 0xDD86 // magic
 const IPV6_HEADER_LEN = 40    // fixed, unlike IPv4's
 
-// NewPacket2 takes a libpcap buffer and extracts TCP/IPv{4,6} packets into
-// a TcpPacket without creating additional data in the heap. If the recipient of
-// this packet needs to keep a copy of it, it should call func (this *TcpPacket) Save(),
-// so the next packet will make copy the payload into it's own new heap allocation.
-// Else the buffer will be overwritten by the next packet.
+// NewPacket2 takes a libpcap buffer and extracts a TCP/IPv{4,6} packet into
+// a new TcpPacket without creating additional data in the heap.
+// If the recipient of this packet needs to keep it after returning to sniffer,
+// it should call func Save() so the packet's payload becomes private instead
+// of mapped into sniffer's buffers.
+// Returns TcpPacket or nil if error.
 func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType int32) *TcpPacket {
 	var packet TcpPacket
 	if NewPacketAllocless(pkthdr_ptr, buf_ptr, datalinkType, &packet) {
@@ -207,7 +212,10 @@ func NewPacket2(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType 
 	return nil
 }
 
-// alloc-less version of NewPacket2.  Ret false if error.
+// NewPacketAllocless takes a libpcap buffer and extracts a TCP/IPv{4,6} packet into
+// an existing TcpPacket. Payload isn't copied, it's mapped, use func Clone()/Save()
+// to get a non-volatile copy.
+// Returns false if error.
 func NewPacketAllocless(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datalinkType int32, packet *TcpPacket) bool {
 	pkthdr := *(*C.struct_pcap_pkthdr)(pkthdr_ptr)
 
