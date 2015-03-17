@@ -195,8 +195,11 @@ func dumpBuf(pbuf unsafe.Pointer, maxlen int) string {
 // FIXME: we are assuming little endian arch... everywhere
 const ETHERTYPE_IP = C.ETHERTYPE_IP>>8 | C.ETHERTYPE_IP&0xFF<<8
 const ETHERTYPE_IPV6 = C.ETHERTYPE_IPV6>>8 | C.ETHERTYPE_IPV6&0xFF<<8
-const LINUX_SLL_IPV6 = 0xDD86 // magic
-const IPV6_HEADER_LEN = 40    // fixed, unlike IPv4's
+const BSD_LO_IPV4 = C.AF_INET
+const BSD_LO_IPV6 = 24
+const FBSD_LO_IPV6 = 28
+const OSX_LO_IPV6 = 30
+const IPV6_HEADER_LEN = 40 // fixed, unlike IPv4's
 
 // NewPacket2 takes a libpcap buffer and extracts a TCP/IPv{4,6} packet into
 // a new TcpPacket without creating additional data in the heap.
@@ -229,7 +232,13 @@ func NewPacketAllocless(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datal
 
 	if datalinkType == C.DLT_LINUX_SLL {
 		// unwrap cooked packet
-		ipv6 = (*C.struct_gen_sll)(buf_ptr).protocol == LINUX_SLL_IPV6
+		switch (*C.struct_gen_sll)(buf_ptr).protocol {
+		case ETHERTYPE_IP:
+		case ETHERTYPE_IPV6:
+			ipv6 = true
+		default:
+			return false // Errorf("unsupported sll_type=%d", (*C.struct_gen_sll)(buf_ptr).protocol)
+		}
 		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.SLL_HDR_LEN))
 	} else if datalinkType == C.DLT_EN10MB {
 		// unwrap ethernet packet
@@ -242,8 +251,17 @@ func NewPacketAllocless(pkthdr_ptr unsafe.Pointer, buf_ptr unsafe.Pointer, datal
 			ipv6 = true
 			buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(C.ETHER_HDR_LEN))
 		default:
-			return false // Errorf("unsupported packet type=%d", ethhdr.ether_type)
+			return false // Errorf("unsupported ether_type=%d", (*C.struct_ether_header)(buf_ptr).ether_type)
 		}
+	} else if datalinkType == C.DLT_NULL { // BSD Loopback
+		switch *(*uint32)(buf_ptr) {
+		case BSD_LO_IPV4:
+		case BSD_LO_IPV6, FBSD_LO_IPV6, OSX_LO_IPV6:
+			ipv6 = true
+		default:
+			return false // Errorf("unsupported bsdlo_type=%d", *(*uint32)(buf_ptr))
+		}
+		buf_ptr = unsafe.Pointer(uintptr(buf_ptr) + uintptr(4))
 	} else {
 		return false // Errorf("unsupported packet format %d", datalinkType)
 	}
