@@ -58,7 +58,7 @@ func goCallbackChan(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C
 func goCallbackLoop(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
 	p := (*Pcap)(unsafe.Pointer(user))
 	p.pktCnt++
-	if p.datalinkType == 0 {
+	if p.datalinkType < 0 {
 		p.datalinkType = p.Datalink()
 	}
 	if packet := pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType); packet != nil {
@@ -72,7 +72,7 @@ func goCallbackLoop(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C
 func goCallbackLoopAllocless(user *C.u_char, pkthdr_ptr *C.struct_pcap_pkthdr, buf_ptr *C.u_char) {
 	p := (*Pcap)(unsafe.Pointer(user))
 	p.pktCnt++
-	if p.datalinkType == 0 {
+	if p.datalinkType < 0 {
 		p.datalinkType = p.Datalink()
 	}
 	if pkt.NewPacketAllocless(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType, &p.Packet) {
@@ -113,9 +113,10 @@ type Pcap struct {
 // OpenOffline returns a *Pcap and opens it to read pcap packets from a save file.
 func OpenOffline(file string) (*Pcap, error) {
 	p := &Pcap{
-		FileName: file,
-		Pchan:    make(chan *pkt.Packet, ChanBuffSize),
-		m:        &sync.Mutex{},
+		FileName:     file,
+		Pchan:        make(chan *pkt.Packet, ChanBuffSize),
+		datalinkType: -1,
+		m:            &sync.Mutex{},
 	}
 
 	return p, p.OpenFile()
@@ -143,9 +144,10 @@ func (p *Pcap) OpenFile() error {
 // Activate.  See Open for an example list of calls that should be made.
 func Create(device string) (*Pcap, error) {
 	p := &Pcap{
-		Device: device,
-		Pchan:  make(chan *pkt.Packet, ChanBuffSize),
-		m:      &sync.Mutex{},
+		Device:       device,
+		Pchan:        make(chan *pkt.Packet, ChanBuffSize),
+		datalinkType: -1,
+		m:            &sync.Mutex{},
 	}
 
 	buf := (*C.char)(C.calloc(C.PCAP_ERRBUF_SIZE, 1))
@@ -164,11 +166,12 @@ func Create(device string) (*Pcap, error) {
 // OpenLive returns a *Pcap and opens it to listen to live network traffic.
 func OpenLive(device string, snaplen int32, promisc bool, timeout_ms int32) (*Pcap, error) {
 	p := &Pcap{
-		Device:  device,
-		Snaplen: snaplen,
-		Timeout: timeout_ms,
-		Pchan:   make(chan *pkt.Packet, ChanBuffSize),
-		m:       &sync.Mutex{},
+		Device:       device,
+		Snaplen:      snaplen,
+		Timeout:      timeout_ms,
+		Pchan:        make(chan *pkt.Packet, ChanBuffSize),
+		datalinkType: -1,
+		m:            &sync.Mutex{},
 	}
 	if promisc {
 		p.Promisc = 1
@@ -367,7 +370,7 @@ func (p *Pcap) NextEx2() (pkt.TcpPacket, int32) {
 	res := int32(C.pcap_next_ex(p.cptr, &pkthdr_ptr, &buf_ptr))
 	if res == 1 {
 		p.pktCnt++
-		if p.datalinkType == 0 {
+		if p.datalinkType < 0 {
 			p.datalinkType = p.Datalink()
 		}
 		if packet := pkt.NewPacket2(unsafe.Pointer(pkthdr_ptr), unsafe.Pointer(buf_ptr), p.datalinkType); packet != nil {
