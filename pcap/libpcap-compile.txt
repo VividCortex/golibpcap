@@ -1,25 +1,22 @@
 ==============================================================================
 ========== Linux
 ==============================================================================
-libpcap-1.6.2 @ http://www.tcpdump.org/release/libpcap-1.6.2.tar.gz
+libpcap-1.7.3 @ http://www.tcpdump.org/release/libpcap-1.7.3.tar.gz
 
 uname --all ; gcc --version
-Linux vcvm 3.16.0-23-generic #31-Ubuntu SMP Tue Oct 21 17:56:17 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
-gcc (Ubuntu 4.9.1-16ubuntu6) 4.9.1
+Linux vcvm 3.19.0-15-generic #15-Ubuntu SMP Thu Apr 16 23:32:37 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+gcc (Ubuntu 4.9.2-10ubuntu13) 4.9.2
 
 
-### we won't capture USB, so set a lower MAXIMUM_SNAPLEN
-sed --in-place 's/define[[:space:]]\+MAXIMUM_SNAPLEN[[:space:]]\+[[:digit:]]\+/define MAXIMUM_SNAPLEN 131072/' pcap-int.h
-
-### TPACKET3 has better performance at high packet rate, but avoiding a Linux bug costs a lot of unneded context switches when there aren't so many packets
-sed --in-place 's/define HAVE_TPACKET3/undef HAVE_TPACKET3/' pcap-linux.c
+### TPACKETv3 reduce ctx switches from 1000/sec to 200/sec
+sed --in-place 's/\stimeout = 1;\s/ timeout = 5; /' pcap-linux.c
 
 ### compatibility with RHEL5/6
 cat >> glibc-version.h <<'EOF'
 __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
 EOF
 
-CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure CC="gcc -include glibc-version.h" --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-protochain --disable-bluetooth --disable-canusb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
+CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure CC="gcc -include glibc-version.h" --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-bluetooth --disable-canusb --disable-usb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
 
 ==============================================================================
 ========== FreeBSD
