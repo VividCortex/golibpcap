@@ -11,12 +11,16 @@ gcc (Ubuntu 4.9.2-10ubuntu13) 4.9.2
 ### TPACKETv3 reduce ctx switches from 1000/sec to 200/sec
 sed --in-place 's/\stimeout = 1;\s/ timeout = 5; /' pcap-linux.c
 
-### compatibility with RHEL5/6
+### To generate the standard version, configure like this:
+CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-bluetooth --disable-canusb --disable-usb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
+
+### To generate the compatibility version (with RHEL5/6), do this:
 cat >> glibc-version.h <<'EOF'
 __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
 EOF
 
-CFLAGS="-U_FORTIFY_SOURCE -D_GNU_SOURCE -m64 -O2 -mtune=generic -fno-stack-protector -ffast-math -frename-registers -fno-pic -fomit-frame-pointer -fstrict-aliasing -fmodulo-sched -fmodulo-sched-allow-regmoves -Wstrict-aliasing=2 -Werror=strict-aliasing" ./configure CC="gcc -include glibc-version.h" --disable-shared --disable-optimizer-dbg --disable-yydebug --disable-bluetooth --disable-canusb --disable-usb --disable-can --disable-dbus --without-libnl --without-dag --without-septel --without-snf --with-pcap=linux
+### ... and then configure using the same command as above, but adding the following as an extra parameter to ./configure:
+CC="gcc -include glibc-version.h"
 
 ==============================================================================
 ========== FreeBSD
